@@ -120,8 +120,13 @@ class DriverMatchingService {
     double? longitude,
   }) async {
     try {
+      if (driverId.isEmpty) {
+        throw Exception('Driver ID is required');
+      }
+
       final updateData = <String, dynamic>{
         'isAvailable': isAvailable,
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       if (latitude != null && longitude != null) {

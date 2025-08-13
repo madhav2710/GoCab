@@ -6,7 +6,6 @@ import '../../services/ride_service.dart';
 import '../../services/driver_matching_service.dart';
 import '../../services/payment_service.dart';
 import '../../models/ride_model.dart';
-import '../../models/user_model.dart';
 import '../../models/payment_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/payment_method_selector.dart';

@@ -4,44 +4,92 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
 import '../models/payment_model.dart';
+import '../config/razorpay_config.dart';
 
 class PaymentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
 
-  // Replace with your actual Razorpay keys
-  static const String _razorpayKeyId = 'rzp_test_YOUR_KEY_ID';
-  static const String _razorpayKeySecret = 'YOUR_KEY_SECRET';
-  static const String _baseUrl = 'https://api.razorpay.com/v1';
+  // Payment callback functions
+  Function(PaymentModel)? onPaymentSuccess;
+  Function(String)? onPaymentError;
+  Function()? onPaymentCancelled;
+
+  // Debug mode for testing
+  static const bool _debugMode = RazorpayConfig.debugMode;
 
   PaymentService() {
     _initializeRazorpay();
   }
 
   void _initializeRazorpay() {
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    try {
+      _razorpay = Razorpay();
+      _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+      _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+      _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
+      if (_debugMode) {
+        print('✅ Razorpay initialized successfully');
+      }
+    } catch (e) {
+      print('❌ Error initializing Razorpay: $e');
+    }
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    // Handle successful payment
-    print('Payment Success: ${response.paymentId}');
+    if (_debugMode) {
+      print('✅ Payment Success: ${response.paymentId}');
+      print('✅ Order ID: ${response.orderId}');
+      print('✅ Signature: ${response.signature}');
+    }
+
+    // Notify success callback
+    if (onPaymentSuccess != null) {
+      // Create payment model from response
+      final paymentModel = PaymentModel(
+        id: response.paymentId ?? '',
+        userId: '', // Will be set by caller
+        amount: 0.0, // Will be set by caller
+        paymentMethod: PaymentMethod.upi, // Will be determined by caller
+        status: PaymentStatus.completed,
+        transactionType: TransactionType.ridePayment,
+        razorpayPaymentId: response.paymentId,
+        razorpayOrderId: response.orderId,
+        createdAt: DateTime.now(),
+        completedAt: DateTime.now(),
+      );
+      onPaymentSuccess!(paymentModel);
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    // Handle payment failure
-    print('Payment Error: ${response.message}');
+    if (_debugMode) {
+      print('❌ Payment Error: ${response.message}');
+      print('❌ Error Code: ${response.code}');
+    }
+
+    // Notify error callback
+    if (onPaymentError != null) {
+      onPaymentError!('Payment failed: ${response.message}');
+    }
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    // Handle external wallet
-    print('External Wallet: ${response.walletName}');
+    if (_debugMode) {
+      print('📱 External Wallet: ${response.walletName}');
+    }
   }
 
   void dispose() {
-    _razorpay.clear();
+    try {
+      _razorpay.clear();
+      if (_debugMode) {
+        print('✅ Razorpay disposed successfully');
+      }
+    } catch (e) {
+      print('❌ Error disposing Razorpay: $e');
+    }
   }
 
   // Create a new wallet for user
@@ -104,7 +152,7 @@ class PaymentService {
         });
   }
 
-  // Recharge wallet
+  // Recharge wallet with improved error handling
   Future<PaymentModel?> rechargeWallet({
     required String userId,
     required double amount,
@@ -114,6 +162,21 @@ class PaymentService {
     String? cardBrand,
   }) async {
     try {
+      // Validate input parameters
+      if (amount <= 0) {
+        throw Exception('Invalid amount: Amount must be greater than 0');
+      }
+
+      if (userId.isEmpty) {
+        throw Exception('Invalid user ID');
+      }
+
+      if (_debugMode) {
+        print(
+          '💰 Starting wallet recharge: ₹$amount via ${paymentMethod.name}',
+        );
+      }
+
       // Create payment record
       final paymentDoc = await _firestore.collection('payments').add({
         'userId': userId,
@@ -123,13 +186,17 @@ class PaymentService {
         'status': 'pending',
         'transactionType': 'walletRecharge',
         'description': 'Wallet Recharge',
-        'createdAt': Timestamp.now(),
+        'createdAt': FieldValue.serverTimestamp(),
         'upiId': upiId,
         'cardLast4': cardLast4,
         'cardBrand': cardBrand,
       });
 
       final paymentId = paymentDoc.id;
+
+      if (_debugMode) {
+        print('📝 Payment record created: $paymentId');
+      }
 
       // Process payment based on method
       bool paymentSuccess = false;
@@ -140,36 +207,90 @@ class PaymentService {
         case PaymentMethod.wallet:
           // For wallet, we'll handle it differently
           paymentSuccess = true;
+          if (_debugMode) {
+            print('✅ Wallet payment processed successfully');
+          }
           break;
+
         case PaymentMethod.upi:
         case PaymentMethod.card:
-          // Create Razorpay order
-          final order = await _createRazorpayOrder(amount, 'Wallet Recharge');
-          razorpayOrderId = order['id'];
+          try {
+            // Create Razorpay order
+            final order = await _createRazorpayOrder(amount, 'Wallet Recharge');
+            razorpayOrderId = order['id'];
 
-          // Initialize payment
-          final options = {
-            'key': _razorpayKeyId,
-            'amount': (amount * 100).round(), // Convert to paise
-            'currency': 'INR',
-            'name': 'GoCab',
-            'description': 'Wallet Recharge',
-            'order_id': razorpayOrderId,
-            'prefill': {
-              'contact': '', // Add user phone if available
-              'email': '', // Add user email if available
-            },
-            'external': {
-              'wallets': ['paytm', 'phonepe', 'gpay'],
-            },
-          };
+            if (_debugMode) {
+              print('📋 Razorpay order created: $razorpayOrderId');
+            }
 
-          _razorpay.open(options);
+            // Initialize payment
+            final options = {
+              'key': RazorpayConfig.razorpayKeyId,
+              'amount': (amount * 100).round(), // Convert to paise
+              'currency': 'INR',
+              'name': 'GoCab',
+              'description': 'Wallet Recharge',
+              'order_id': razorpayOrderId,
+              'prefill': {
+                'contact': '', // Add user phone if available
+                'email': '', // Add user email if available
+              },
+              'external': {
+                'wallets': ['paytm', 'phonepe', 'gpay'],
+              },
+              'theme': {'color': '#3399cc'},
+            };
 
-          // For demo purposes, we'll simulate success
-          // In real implementation, handle the callback
-          paymentSuccess = true;
-          razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
+            // Set up payment callbacks
+            onPaymentSuccess = (PaymentModel payment) async {
+              try {
+                // Update payment status
+                await _firestore.collection('payments').doc(paymentId).update({
+                  'status': 'completed',
+                  'razorpayOrderId': razorpayOrderId,
+                  'razorpayPaymentId': payment.razorpayPaymentId,
+                  'completedAt': FieldValue.serverTimestamp(),
+                });
+
+                // Update wallet balance
+                await _updateWalletBalance(userId, amount, paymentId);
+
+                if (_debugMode) {
+                  print('✅ Payment completed and wallet updated');
+                }
+              } catch (e) {
+                print('❌ Error updating payment status: $e');
+              }
+            };
+
+            onPaymentError = (String error) async {
+              try {
+                await _firestore.collection('payments').doc(paymentId).update({
+                  'status': 'failed',
+                  'failureReason': error,
+                  'completedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (_debugMode) {
+                  print('❌ Payment failed: $error');
+                }
+              } catch (e) {
+                print('❌ Error updating failed payment: $e');
+              }
+            };
+
+            // Open payment gateway
+            _razorpay.open(options);
+
+            // For demo purposes, simulate success after a delay
+            // In real implementation, handle the callback
+            await Future.delayed(const Duration(seconds: 2));
+            paymentSuccess = true;
+            razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
+          } catch (e) {
+            print('❌ Error creating Razorpay order: $e');
+            throw Exception('Failed to create payment order: $e');
+          }
           break;
       }
 
@@ -179,13 +300,13 @@ class PaymentService {
           'status': 'completed',
           'razorpayOrderId': razorpayOrderId,
           'razorpayPaymentId': razorpayPaymentId,
-          'completedAt': Timestamp.now(),
+          'completedAt': FieldValue.serverTimestamp(),
         });
 
         // Update wallet balance
         await _updateWalletBalance(userId, amount, paymentId);
 
-        return PaymentModel.fromMap({
+        final paymentModel = PaymentModel.fromMap({
           'userId': userId,
           'rideId': null,
           'amount': amount,
@@ -201,16 +322,22 @@ class PaymentService {
           'createdAt': Timestamp.now(),
           'completedAt': Timestamp.now(),
         }, paymentId);
+
+        if (_debugMode) {
+          print('✅ Wallet recharge completed successfully');
+        }
+
+        return paymentModel;
       }
 
       return null;
     } catch (e) {
-      print('Error recharging wallet: $e');
-      return null;
+      print('❌ Error recharging wallet: $e');
+      throw Exception('Wallet recharge failed: $e');
     }
   }
 
-  // Process ride payment
+  // Process ride payment with improved error handling
   Future<PaymentModel?> processRidePayment({
     required String userId,
     required String rideId,
@@ -221,11 +348,34 @@ class PaymentService {
     String? cardBrand,
   }) async {
     try {
+      // Validate input parameters
+      if (amount <= 0) {
+        throw Exception('Invalid amount: Amount must be greater than 0');
+      }
+
+      if (userId.isEmpty) {
+        throw Exception('Invalid user ID');
+      }
+
+      if (rideId.isEmpty) {
+        throw Exception('Invalid ride ID');
+      }
+
+      if (_debugMode) {
+        print('🚗 Starting ride payment: ₹$amount via ${paymentMethod.name}');
+      }
+
       // Check if user has sufficient wallet balance
       if (paymentMethod == PaymentMethod.wallet) {
         final wallet = await getWallet(userId);
         if (wallet == null || wallet.balance < amount) {
-          throw Exception('Insufficient wallet balance');
+          throw Exception(
+            'Insufficient wallet balance. Required: ₹$amount, Available: ₹${wallet?.balance ?? 0}',
+          );
+        }
+
+        if (_debugMode) {
+          print('✅ Wallet balance sufficient: ₹${wallet.balance}');
         }
       }
 
@@ -238,13 +388,17 @@ class PaymentService {
         'status': 'pending',
         'transactionType': 'ridePayment',
         'description': 'Ride Payment',
-        'createdAt': Timestamp.now(),
+        'createdAt': FieldValue.serverTimestamp(),
         'upiId': upiId,
         'cardLast4': cardLast4,
         'cardBrand': cardBrand,
       });
 
       final paymentId = paymentDoc.id;
+
+      if (_debugMode) {
+        print('📝 Payment record created: $paymentId');
+      }
 
       // Process payment based on method
       bool paymentSuccess = false;
@@ -253,35 +407,93 @@ class PaymentService {
 
       switch (paymentMethod) {
         case PaymentMethod.wallet:
-          // Deduct from wallet
-          await _updateWalletBalance(userId, -amount, paymentId);
-          paymentSuccess = true;
+          try {
+            // Deduct from wallet
+            await _updateWalletBalance(userId, -amount, paymentId);
+            paymentSuccess = true;
+
+            if (_debugMode) {
+              print('✅ Wallet payment processed successfully');
+            }
+          } catch (e) {
+            print('❌ Error processing wallet payment: $e');
+            throw Exception('Wallet payment failed: $e');
+          }
           break;
+
         case PaymentMethod.upi:
         case PaymentMethod.card:
-          // Create Razorpay order
-          final order = await _createRazorpayOrder(amount, 'Ride Payment');
-          razorpayOrderId = order['id'];
+          try {
+            // Create Razorpay order
+            final order = await _createRazorpayOrder(amount, 'Ride Payment');
+            razorpayOrderId = order['id'];
 
-          // Initialize payment
-          final options = {
-            'key': _razorpayKeyId,
-            'amount': (amount * 100).round(),
-            'currency': 'INR',
-            'name': 'GoCab',
-            'description': 'Ride Payment',
-            'order_id': razorpayOrderId,
-            'prefill': {'contact': '', 'email': ''},
-            'external': {
-              'wallets': ['paytm', 'phonepe', 'gpay'],
-            },
-          };
+            if (_debugMode) {
+              print('📋 Razorpay order created: $razorpayOrderId');
+            }
 
-          _razorpay.open(options);
+            // Initialize payment
+            final options = {
+              'key': RazorpayConfig.razorpayKeyId,
+              'amount': (amount * 100).round(),
+              'currency': 'INR',
+              'name': 'GoCab',
+              'description': 'Ride Payment',
+              'order_id': razorpayOrderId,
+              'prefill': {'contact': '', 'email': ''},
+              'external': {
+                'wallets': ['paytm', 'phonepe', 'gpay'],
+              },
+              'theme': {'color': '#3399cc'},
+            };
 
-          // For demo purposes, simulate success
-          paymentSuccess = true;
-          razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
+            // Set up payment callbacks
+            onPaymentSuccess = (PaymentModel payment) async {
+              try {
+                // Update payment status
+                await _firestore.collection('payments').doc(paymentId).update({
+                  'status': 'completed',
+                  'razorpayOrderId': razorpayOrderId,
+                  'razorpayPaymentId': payment.razorpayPaymentId,
+                  'completedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (_debugMode) {
+                  print('✅ Ride payment completed successfully');
+                }
+              } catch (e) {
+                print('❌ Error updating payment status: $e');
+              }
+            };
+
+            onPaymentError = (String error) async {
+              try {
+                await _firestore.collection('payments').doc(paymentId).update({
+                  'status': 'failed',
+                  'failureReason': error,
+                  'completedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (_debugMode) {
+                  print('❌ Ride payment failed: $error');
+                }
+              } catch (e) {
+                print('❌ Error updating failed payment: $e');
+              }
+            };
+
+            // Open payment gateway
+            _razorpay.open(options);
+
+            // For demo purposes, simulate success after a delay
+            // In real implementation, handle the callback
+            await Future.delayed(const Duration(seconds: 2));
+            paymentSuccess = true;
+            razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
+          } catch (e) {
+            print('❌ Error creating Razorpay order: $e');
+            throw Exception('Failed to create payment order: $e');
+          }
           break;
       }
 
@@ -291,10 +503,10 @@ class PaymentService {
           'status': 'completed',
           'razorpayOrderId': razorpayOrderId,
           'razorpayPaymentId': razorpayPaymentId,
-          'completedAt': Timestamp.now(),
+          'completedAt': FieldValue.serverTimestamp(),
         });
 
-        return PaymentModel.fromMap({
+        final paymentModel = PaymentModel.fromMap({
           'userId': userId,
           'rideId': rideId,
           'amount': amount,
@@ -310,40 +522,90 @@ class PaymentService {
           'createdAt': Timestamp.now(),
           'completedAt': Timestamp.now(),
         }, paymentId);
+
+        if (_debugMode) {
+          print('✅ Ride payment completed successfully');
+        }
+
+        return paymentModel;
       }
 
       return null;
     } catch (e) {
-      print('Error processing ride payment: $e');
-      return null;
+      print('❌ Error processing ride payment: $e');
+      throw Exception('Ride payment failed: $e');
     }
   }
 
-  // Create Razorpay order
+  // Create Razorpay order with improved error handling
   Future<Map<String, dynamic>> _createRazorpayOrder(
     double amount,
     String description,
   ) async {
-    final url = Uri.parse('$_baseUrl/orders');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization':
-            'Basic ${base64Encode(utf8.encode('$_razorpayKeyId:$_razorpayKeySecret'))}',
-      },
-      body: jsonEncode({
-        'amount': (amount * 100).round(),
-        'currency': 'INR',
-        'receipt': 'receipt_${DateTime.now().millisecondsSinceEpoch}',
-        'notes': {'description': description},
-      }),
-    );
+    try {
+      // Validate input parameters
+      if (amount <= 0) {
+        throw Exception('Invalid amount: Amount must be greater than 0');
+      }
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to create Razorpay order: ${response.body}');
+      if (description.isEmpty) {
+        throw Exception('Invalid description: Description cannot be empty');
+      }
+
+      if (_debugMode) {
+        print('📋 Creating Razorpay order: ₹$amount - $description');
+      }
+
+      final url = Uri.parse('${RazorpayConfig.baseUrl}/orders');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization':
+              'Basic ${base64Encode(utf8.encode('${RazorpayConfig.razorpayKeyId}:${RazorpayConfig.razorpayKeySecret}'))}',
+        },
+        body: jsonEncode({
+          'amount': (amount * 100).round(),
+          'currency': 'INR',
+          'receipt': 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+          'notes': {'description': description},
+        }),
+      );
+
+      if (_debugMode) {
+        print('📡 Razorpay API Response Status: ${response.statusCode}');
+        print('📡 Razorpay API Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final orderData = jsonDecode(response.body);
+
+        if (_debugMode) {
+          print('✅ Razorpay order created successfully: ${orderData['id']}');
+        }
+
+        return orderData;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        final errorMessage =
+            errorBody['error']?['description'] ?? 'Unknown error';
+
+        if (_debugMode) {
+          print('❌ Razorpay API Error: $errorMessage');
+        }
+
+        throw Exception('Failed to create Razorpay order: $errorMessage');
+      }
+    } catch (e) {
+      if (_debugMode) {
+        print('❌ Error in _createRazorpayOrder: $e');
+      }
+
+      if (e.toString().contains('Failed to create Razorpay order')) {
+        rethrow;
+      } else {
+        throw Exception('Network error while creating Razorpay order: $e');
+      }
     }
   }
 

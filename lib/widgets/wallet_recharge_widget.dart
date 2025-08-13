@@ -23,6 +23,7 @@ class _WalletRechargeWidgetState extends State<WalletRechargeWidget> {
   double? _selectedAmount;
   PaymentMethod? _selectedPaymentMethod;
   final TextEditingController _customAmountController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -32,173 +33,318 @@ class _WalletRechargeWidgetState extends State<WalletRechargeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Current Balance
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue[400]!, Colors.blue[600]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
               children: [
-                Text(
-                  'Current Balance',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.blue[600],
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '₹${widget.currentBalance.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Recharge Wallet',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      Text(
+                        'Add money to your wallet',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(
+                    Icons.close,
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Amount Selection
-          Text(
-            'Select Amount',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Preset Amounts
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _presetAmounts.map((amount) {
-              final isSelected = _selectedAmount == amount;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedAmount = amount;
-                    _customAmountController.clear();
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.blue : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: isSelected ? Colors.blue : Colors.grey[300]!,
-                    ),
-                  ),
-                  child: Text(
-                    '₹${amount.toStringAsFixed(0)}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : Colors.grey[700],
-                    ),
-                  ),
+            // Current Balance Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue[400]!,
+                    Colors.blue[600]!,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-
-          // Custom Amount
-          TextField(
-            controller: _customAmountController,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Custom Amount',
-              hintText: 'Enter amount',
-              prefixText: '₹',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.blue, width: 2),
+              child: Column(
+                children: [
+                  Text(
+                    'Current Balance',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '₹${widget.currentBalance.toStringAsFixed(2)}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
-            onChanged: (value) {
-              if (value.isNotEmpty) {
-                setState(() {
-                  _selectedAmount = double.tryParse(value);
-                });
-              } else {
-                setState(() {
-                  _selectedAmount = null;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Payment Method
-          PaymentMethodSelector(
-            selectedMethod: _selectedPaymentMethod,
-            onMethodSelected: (method) {
-              setState(() {
-                _selectedPaymentMethod = method;
-              });
-            },
-            showWallet: false, // Don't show wallet option for recharge
-          ),
-          const SizedBox(height: 24),
-
-          // Recharge Button
-          SizedBox(
-            width: double.infinity,
-            child: CustomButton(
-              text: 'Recharge Wallet',
-              onPressed: _canRecharge() ? _handleRecharge : () {},
-              isLoading: false,
+            // Amount Selection
+            Text(
+              'Select Amount',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // Preset Amounts
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _presetAmounts.map((amount) {
+                final isSelected = _selectedAmount == amount;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedAmount = amount;
+                      _customAmountController.clear();
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.blue[600] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? Colors.blue[600]! : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      '₹${amount.toStringAsFixed(0)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : Colors.grey[800],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Custom Amount
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Custom Amount',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _customAmountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'Enter amount (₹)',
+                      hintStyle: GoogleFonts.poppins(
+                        color: Colors.grey[500],
+                      ),
+                      prefixIcon: Icon(
+                        Icons.currency_rupee,
+                        color: Colors.grey[600],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.blue[600]!),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedAmount = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Payment Method Selection
+            PaymentMethodSelector(
+              selectedMethod: _selectedPaymentMethod,
+              onMethodSelected: (method) {
+                setState(() {
+                  _selectedPaymentMethod = method;
+                });
+              },
+              walletBalance: widget.currentBalance,
+              showWallet: false,
+            ),
+            const SizedBox(height: 24),
+
+                         // Recharge Button
+             SizedBox(
+               width: double.infinity,
+               child: CustomButton(
+                 text: 'Recharge Wallet',
+                 onPressed: _canProceed() ? () => _handleRecharge() : () {},
+                 isLoading: _isLoading,
+                 backgroundColor: Colors.blue[600]!,
+                 textColor: Colors.white,
+               ),
+             ),
+            const SizedBox(height: 16),
+
+            // Info Text
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.blue[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Amount will be added to your wallet instantly',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  bool _canRecharge() {
-    return _selectedAmount != null &&
-        _selectedAmount! > 0 &&
-        _selectedPaymentMethod != null;
+  bool _canProceed() {
+    final amount = _getSelectedAmount();
+    return amount > 0 && _selectedPaymentMethod != null && !_isLoading;
   }
 
-  void _handleRecharge() {
-    if (_canRecharge()) {
-      widget.onRecharge(_selectedAmount!, _selectedPaymentMethod!);
+  double _getSelectedAmount() {
+    if (_selectedAmount != null) {
+      return _selectedAmount!;
+    }
+    if (_customAmountController.text.isNotEmpty) {
+      return double.tryParse(_customAmountController.text) ?? 0;
+    }
+    return 0;
+  }
+
+  Future<void> _handleRecharge() async {
+    final amount = _getSelectedAmount();
+    if (amount <= 0 || _selectedPaymentMethod == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await widget.onRecharge(amount, _selectedPaymentMethod!);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      // Error is handled by the parent widget
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 }

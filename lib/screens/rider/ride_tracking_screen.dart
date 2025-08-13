@@ -32,7 +32,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
   RideModel? _currentRide;
   UserModel? _driver;
   Duration? _eta;
-  bool _isLoading = true;
+  final bool _isLoading = true;
   bool _hasShownFeedbackPrompt = false;
 
   @override

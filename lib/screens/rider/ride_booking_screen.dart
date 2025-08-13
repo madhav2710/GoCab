@@ -35,7 +35,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
   double? _dropoffLongitude;
   RideType _selectedRideType = RideType.solo;
   double? _estimatedFare;
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isCarpoolEnabled = false;
   List<CarpoolRideModel> _availableCarpoolRides = [];
 

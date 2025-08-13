@@ -13,16 +13,20 @@ class RideTrackingService {
   // Get current ride for a user
   Future<RideModel?> getCurrentRide(String userId) async {
     try {
+      // Try the complex query first
       final querySnapshot = await _firestore
           .collection('rides')
           .where('riderId', isEqualTo: userId)
-          .where('status', whereIn: [
-            RideStatus.pending.toString().split('.').last,
-            RideStatus.accepted.toString().split('.').last,
-            RideStatus.inProgress.toString().split('.').last,
-            RideStatus.arrived.toString().split('.').last,
-            RideStatus.pickupComplete.toString().split('.').last,
-          ])
+          .where(
+            'status',
+            whereIn: [
+              'pending',
+              'accepted',
+              'inProgress',
+              'arrived',
+              'pickupComplete',
+            ],
+          )
           .orderBy('createdAt', descending: true)
           .limit(1)
           .get();
@@ -34,8 +38,44 @@ class RideTrackingService {
       }
       return null;
     } catch (e) {
-      print('Error getting current ride: $e');
-      return null;
+      print('Complex query failed, trying fallback: $e');
+      // Fallback: simple query without orderBy
+      try {
+        final querySnapshot = await _firestore
+            .collection('rides')
+            .where('riderId', isEqualTo: userId)
+            .where(
+              'status',
+              whereIn: [
+                'pending',
+                'accepted',
+                'inProgress',
+                'arrived',
+                'pickupComplete',
+              ],
+            )
+            .limit(10)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          // Sort manually and get the most recent
+          final sortedDocs = querySnapshot.docs.toList()
+            ..sort((a, b) {
+              final aTime = a.data()['createdAt'] as Timestamp?;
+              final bTime = b.data()['createdAt'] as Timestamp?;
+              if (aTime == null || bTime == null) return 0;
+              return bTime.compareTo(aTime);
+            });
+
+          final data = sortedDocs.first.data();
+          data['id'] = sortedDocs.first.id;
+          return RideModel.fromMap(data);
+        }
+        return null;
+      } catch (fallbackError) {
+        print('Fallback query also failed: $fallbackError');
+        return null;
+      }
     }
   }
 
@@ -45,26 +85,33 @@ class RideTrackingService {
       return _firestore
           .collection('rides')
           .where('riderId', isEqualTo: userId)
-          .where('status', whereIn: [
-            RideStatus.pending.toString().split('.').last,
-            RideStatus.accepted.toString().split('.').last,
-            RideStatus.inProgress.toString().split('.').last,
-            RideStatus.arrived.toString().split('.').last,
-            RideStatus.pickupComplete.toString().split('.').last,
-          ])
+          .where(
+            'status',
+            whereIn: [
+              'pending',
+              'accepted',
+              'inProgress',
+              'arrived',
+              'pickupComplete',
+            ],
+          )
           .orderBy('createdAt', descending: true)
           .limit(1)
           .snapshots()
           .map((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          final data = snapshot.docs.first.data();
-          data['id'] = snapshot.docs.first.id;
-          return RideModel.fromMap(data);
-        }
-        return null;
-      });
+            if (snapshot.docs.isNotEmpty) {
+              final data = snapshot.docs.first.data();
+              data['id'] = snapshot.docs.first.id;
+              return RideModel.fromMap(data);
+            }
+            return null;
+          })
+          .handleError((error) {
+            print('Stream query failed: $error');
+            return null;
+          });
     } catch (e) {
-      print('Error streaming current ride: $e');
+      print('Error creating stream: $e');
       return Stream.value(null);
     }
   }
@@ -72,11 +119,9 @@ class RideTrackingService {
   // Get driver location updates
   Stream<UserModel?> streamDriverLocation(String driverId) {
     try {
-      return _firestore
-          .collection('users')
-          .doc(driverId)
-          .snapshots()
-          .map((snapshot) {
+      return _firestore.collection('users').doc(driverId).snapshots().map((
+        snapshot,
+      ) {
         if (snapshot.exists) {
           return UserModel.fromMap(snapshot.data()!);
         }
@@ -89,7 +134,11 @@ class RideTrackingService {
   }
 
   // Update driver location
-  Future<void> updateDriverLocation(String driverId, double latitude, double longitude) async {
+  Future<void> updateDriverLocation(
+    String driverId,
+    double latitude,
+    double longitude,
+  ) async {
     try {
       await _firestore.collection('users').doc(driverId).update({
         'latitude': latitude,
@@ -105,7 +154,7 @@ class RideTrackingService {
   Future<void> updateRideStatus(String rideId, RideStatus status) async {
     try {
       await _firestore.collection('rides').doc(rideId).update({
-        'status': status.toString().split('.').last,
+        'status': status.name,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -169,16 +218,21 @@ class RideTrackingService {
   }
 
   // Calculate ETA between two points (simplified)
-  Future<Duration> calculateETA(double fromLat, double fromLng, double toLat, double toLng) async {
+  Future<Duration> calculateETA(
+    double fromLat,
+    double fromLng,
+    double toLat,
+    double toLng,
+  ) async {
     try {
       // Simple distance calculation using Haversine formula
       final distance = _calculateDistance(fromLat, fromLng, toLat, toLng);
-      
+
       // Assume average speed of 30 km/h in city traffic
       const averageSpeedKmh = 30.0;
       final timeInHours = distance / averageSpeedKmh;
       final timeInMinutes = (timeInHours * 60).round();
-      
+
       return Duration(minutes: timeInMinutes);
     } catch (e) {
       print('Error calculating ETA: $e');
@@ -187,14 +241,23 @@ class RideTrackingService {
   }
 
   // Haversine formula to calculate distance
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double earthRadius = 6371; // Earth's radius in kilometers
 
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLon = _degreesToRadians(lon2 - lon1);
 
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_degreesToRadians(lat1)) * math.cos(_degreesToRadians(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2);
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) *
+            math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
 
     final double c = 2 * math.asin(math.sqrt(a));
 

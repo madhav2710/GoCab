@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/ride_model.dart';
 import '../models/user_model.dart';
@@ -181,6 +180,34 @@ class RideService {
   // Assign driver to a ride
   Future<void> assignDriverToRide(String rideId, String driverId) async {
     try {
+      if (rideId.isEmpty) {
+        throw Exception('Ride ID is required');
+      }
+      
+      if (driverId.isEmpty) {
+        throw Exception('Driver ID is required');
+      }
+
+      // First get the ride document to get the rider ID
+      final rideDoc = await _firestore.collection('rides').doc(rideId).get();
+      if (!rideDoc.exists) {
+        throw Exception('Ride not found');
+      }
+
+      final rideData = rideDoc.data()!;
+      final riderId = rideData['riderId'] as String?;
+      
+      if (riderId == null || riderId.isEmpty) {
+        throw Exception('Rider ID not found in ride data');
+      }
+
+      // Check if ride is already assigned
+      final currentStatus = rideData['status'] as String?;
+      if (currentStatus == RideStatus.accepted.toString().split('.').last) {
+        throw Exception('Ride is already assigned to a driver');
+      }
+
+      // Update the ride with driver ID and status
       await _firestore.collection('rides').doc(rideId).update({
         'driverId': driverId,
         'status': RideStatus.accepted.toString().split('.').last,
@@ -188,13 +215,18 @@ class RideService {
       });
 
       // Send notification to rider
-      await _notificationManager.sendRideStatusToRider(
-        rideId: rideId,
-        riderId: '', // We'll need to get this from the ride
-        title: 'Driver Found!',
-        body: 'A driver has accepted your ride request.',
-        type: NotificationType.rideStatus,
-      );
+      try {
+        await _notificationManager.sendRideStatusToRider(
+          rideId: rideId,
+          riderId: riderId,
+          title: 'Driver Found!',
+          body: 'A driver has accepted your ride request.',
+          type: NotificationType.rideStatus,
+        );
+      } catch (notificationError) {
+        print('Error sending notification: $notificationError');
+        // Don't throw here as the main operation succeeded
+      }
     } catch (e) {
       print('Error assigning driver to ride: $e');
       rethrow;

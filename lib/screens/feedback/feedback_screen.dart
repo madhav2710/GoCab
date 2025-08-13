@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/feedback_model.dart';
 import '../../models/ride_model.dart';
 import '../../models/user_model.dart';
 import '../../services/feedback_service.dart';
