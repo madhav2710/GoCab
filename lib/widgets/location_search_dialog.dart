@@ -51,8 +51,7 @@ class _LocationSearchDialogState extends State<LocationSearchDialog> {
         _filteredSuggestions = _suggestions;
       } else {
         _filteredSuggestions = _suggestions
-            .where((suggestion) =>
-                suggestion.toLowerCase().contains(query))
+            .where((suggestion) => suggestion.toLowerCase().contains(query))
             .toList();
       }
     });
@@ -61,9 +60,7 @@ class _LocationSearchDialogState extends State<LocationSearchDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         height: MediaQuery.of(context).size.height * 0.7,
         padding: const EdgeInsets.all(20),
@@ -114,8 +111,8 @@ class _LocationSearchDialogState extends State<LocationSearchDialog> {
                   final suggestion = _filteredSuggestions[index];
                   return ListTile(
                     leading: Icon(
-                      suggestion == 'Current Location' 
-                          ? Icons.my_location 
+                      suggestion == 'Current Location'
+                          ? Icons.my_location
                           : Icons.location_on,
                       color: Theme.of(context).primaryColor,
                     ),

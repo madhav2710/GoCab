@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/ride_model.dart';
@@ -35,7 +36,7 @@ class NotificationService {
             provisional: false,
           );
 
-      print('User granted permission: ${settings.authorizationStatus}');
+      debugPrint('User granted permission: ${settings.authorizationStatus}');
 
       // Initialize local notifications
       const AndroidInitializationSettings androidSettings =
@@ -79,9 +80,9 @@ class NotificationService {
         _handleInitialMessage(initialMessage);
       }
 
-      print('Notification service initialized successfully');
+      debugPrint('Notification service initialized successfully');
     } catch (e) {
-      print('Error initializing notification service: $e');
+      debugPrint('Error initializing notification service: $e');
     }
   }
 
@@ -141,10 +142,10 @@ class NotificationService {
   Future<String?> getFCMToken() async {
     try {
       String? token = await _firebaseMessaging.getToken();
-      print('FCM Token: $token');
+      debugPrint('FCM Token: $token');
       return token;
     } catch (e) {
-      print('Error getting FCM token: $e');
+      debugPrint('Error getting FCM token: $e');
       return null;
     }
   }
@@ -157,10 +158,10 @@ class NotificationService {
           'fcmToken': token,
           'lastTokenUpdate': FieldValue.serverTimestamp(),
         });
-        print('FCM token updated for user: $userId');
+        debugPrint('FCM token updated for user: $userId');
       }
     } catch (e) {
-      print('Error updating FCM token: $e');
+      debugPrint('Error updating FCM token: $e');
     }
   }
 
@@ -188,7 +189,7 @@ class NotificationService {
         channelId: 'ride_notifications',
       );
     } catch (e) {
-      print('Error sending ride request notification: $e');
+      debugPrint('Error sending ride request notification: $e');
     }
   }
 
@@ -220,7 +221,7 @@ class NotificationService {
         channelId: 'ride_notifications',
       );
     } catch (e) {
-      print('Error sending ride status notification: $e');
+      debugPrint('Error sending ride status notification: $e');
     }
   }
 
@@ -245,7 +246,7 @@ class NotificationService {
         channelId: 'ride_notifications',
       );
     } catch (e) {
-      print('Error sending driver arrival notification: $e');
+      debugPrint('Error sending driver arrival notification: $e');
     }
   }
 
@@ -270,7 +271,7 @@ class NotificationService {
         channelId: 'promotion_notifications',
       );
     } catch (e) {
-      print('Error sending promotion notification: $e');
+      debugPrint('Error sending promotion notification: $e');
     }
   }
 
@@ -301,7 +302,7 @@ class NotificationService {
         channelId: 'emergency_notifications',
       );
     } catch (e) {
-      print('Error sending emergency alert: $e');
+      debugPrint('Error sending emergency alert: $e');
     }
   }
 
@@ -328,7 +329,7 @@ class NotificationService {
         channelId: 'ride_notifications',
       );
     } catch (e) {
-      print('Error sending payment notification: $e');
+      debugPrint('Error sending payment notification: $e');
     }
   }
 
@@ -351,7 +352,7 @@ class NotificationService {
         channelId: 'ride_notifications',
       );
     } catch (e) {
-      print('Error sending feedback reminder: $e');
+      debugPrint('Error sending feedback reminder: $e');
     }
   }
 
@@ -374,12 +375,12 @@ class NotificationService {
       );
 
       // Log the notification for debugging
-      print('Notification sent to token: $token');
-      print('Title: $title');
-      print('Body: $body');
-      print('Data: $data');
+      debugPrint('Notification sent to token: $token');
+      debugPrint('Title: $title');
+      debugPrint('Body: $body');
+      debugPrint('Data: $data');
     } catch (e) {
-      print('Error sending FCM notification: $e');
+      debugPrint('Error sending FCM notification: $e');
     }
   }
 
@@ -481,9 +482,9 @@ class NotificationService {
 
   // Handle foreground messages
   void _handleForegroundMessage(RemoteMessage message) {
-    print('Received foreground message: ${message.data}');
-    print('Message title: ${message.notification?.title}');
-    print('Message body: ${message.notification?.body}');
+    debugPrint('Received foreground message: ${message.data}');
+    debugPrint('Message title: ${message.notification?.title}');
+    debugPrint('Message body: ${message.notification?.body}');
 
     String channelId = 'ride_notifications';
     if (message.data['type'] == NotificationType.promotion.name) {
@@ -502,13 +503,13 @@ class NotificationService {
 
   // Handle message opened from background
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('Message opened from background: ${message.data}');
+    debugPrint('Message opened from background: ${message.data}');
     _handleNotificationData(message.data);
   }
 
   // Handle initial message when app was terminated
   void _handleInitialMessage(RemoteMessage message) {
-    print('Initial message: ${message.data}');
+    debugPrint('Initial message: ${message.data}');
     _handleNotificationData(message.data);
   }
 
@@ -519,68 +520,68 @@ class NotificationService {
     switch (type) {
       case 'ride_request':
         // Handle ride request notification
-        print('Handling ride request notification');
+        debugPrint('Handling ride request notification');
         break;
       case 'ride_status':
         // Handle ride status notification
-        print('Handling ride status notification');
+        debugPrint('Handling ride status notification');
         break;
       case 'driver_arrival':
         // Handle driver arrival notification
-        print('Handling driver arrival notification');
+        debugPrint('Handling driver arrival notification');
         break;
       case 'promotion':
         // Handle promotion notification
-        print('Handling promotion notification');
+        debugPrint('Handling promotion notification');
         break;
       case 'emergency':
         // Handle emergency notification
-        print('Handling emergency notification');
+        debugPrint('Handling emergency notification');
         break;
       case 'payment':
         // Handle payment notification
-        print('Handling payment notification');
+        debugPrint('Handling payment notification');
         break;
       case 'feedback':
         // Handle feedback notification
-        print('Handling feedback notification');
+        debugPrint('Handling feedback notification');
         break;
       default:
-        print('Unknown notification type: $type');
+        debugPrint('Unknown notification type: $type');
     }
   }
 
   // Handle local notification tap
   void _onDidReceiveNotificationResponse(NotificationResponse response) {
-    print('Notification tapped: ${response.payload}');
+    debugPrint('Notification tapped: ${response.payload}');
 
     if (response.payload != null) {
       try {
         final data = json.decode(response.payload!);
         _handleNotificationData(data);
       } catch (e) {
-        print('Error parsing notification payload: $e');
+        debugPrint('Error parsing notification payload: $e');
       }
     }
   }
 
   // Handle local notification for iOS
-  void _onDidReceiveLocalNotification(
-    int id,
-    String? title,
-    String? body,
-    String? payload,
-  ) {
-    print('Local notification received: $title - $body');
-  }
+  // void _onDidReceiveLocalNotification(
+  //   int id,
+  //   String? title,
+  //   String? body,
+  //   String? payload,
+  // ) {
+  //   debugPrint('Local notification received: $title - $body');
+  // }
 
   // Subscribe to topic for broadcast notifications
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _firebaseMessaging.subscribeToTopic(topic);
-      print('Subscribed to topic: $topic');
+      debugPrint('Subscribed to topic: $topic');
     } catch (e) {
-      print('Error subscribing to topic: $e');
+      debugPrint('Error subscribing to topic: $e');
     }
   }
 
@@ -588,9 +589,9 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
-      print('Unsubscribed from topic: $topic');
+      debugPrint('Unsubscribed from topic: $topic');
     } catch (e) {
-      print('Error unsubscribing from topic: $e');
+      debugPrint('Error unsubscribing from topic: $e');
     }
   }
 
@@ -606,7 +607,7 @@ class NotificationService {
         await subscribeToTopic('riders');
       }
     } catch (e) {
-      print('Error subscribing to role topics: $e');
+      debugPrint('Error subscribing to role topics: $e');
     }
   }
 

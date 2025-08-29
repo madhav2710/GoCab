@@ -278,17 +278,17 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
     _calculateFare();
   }
 
-  void _onCarpoolToggled(bool value) {
-    setState(() {
-      _isCarpoolEnabled = value;
-      if (value) {
-        _selectedRideType = RideType.carpool;
-      } else {
-        _selectedRideType = RideType.solo;
-      }
-    });
-    _calculateFare();
-  }
+  // void _onCarpoolToggled(bool value) {
+  //   setState(() {
+  //     _isCarpoolEnabled = value;
+  //     if (value) {
+  //       _selectedRideType = RideType.carpool;
+  //     } else {
+  //       _selectedRideType = RideType.solo;
+  //     }
+  //   });
+  //   _calculateFare();
+  // }
 
   Future<void> _findAvailableCarpoolRides() async {
     if (_pickupLatitude == null ||

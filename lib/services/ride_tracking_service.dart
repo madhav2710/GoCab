@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/ride_model.dart';
 import '../models/user_model.dart';
@@ -38,7 +39,7 @@ class RideTrackingService {
       }
       return null;
     } catch (e) {
-      print('Complex query failed, trying fallback: $e');
+      debugPrint('Complex query failed, trying fallback: $e');
       // Fallback: simple query without orderBy
       try {
         final querySnapshot = await _firestore
@@ -73,7 +74,7 @@ class RideTrackingService {
         }
         return null;
       } catch (fallbackError) {
-        print('Fallback query also failed: $fallbackError');
+        debugPrint('Fallback query also failed: $fallbackError');
         return null;
       }
     }
@@ -107,11 +108,11 @@ class RideTrackingService {
             return null;
           })
           .handleError((error) {
-            print('Stream query failed: $error');
+            debugPrint('Stream query failed: $error');
             return null;
           });
     } catch (e) {
-      print('Error creating stream: $e');
+      debugPrint('Error creating stream: $e');
       return Stream.value(null);
     }
   }
@@ -128,7 +129,7 @@ class RideTrackingService {
         return null;
       });
     } catch (e) {
-      print('Error streaming driver location: $e');
+      debugPrint('Error streaming driver location: $e');
       return Stream.value(null);
     }
   }
@@ -146,7 +147,7 @@ class RideTrackingService {
         'lastLocationUpdate': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating driver location: $e');
+      debugPrint('Error updating driver location: $e');
     }
   }
 
@@ -161,7 +162,7 @@ class RideTrackingService {
       // Send appropriate notifications based on status
       await _sendStatusNotification(rideId, status);
     } catch (e) {
-      print('Error updating ride status: $e');
+      debugPrint('Error updating ride status: $e');
     }
   }
 
@@ -173,7 +174,7 @@ class RideTrackingService {
 
       final rideData = rideDoc.data()!;
       final riderId = rideData['riderId'];
-      final driverId = rideData['driverId'];
+      // final driverId = rideData['driverId'];
 
       String title = '';
       String body = '';
@@ -213,7 +214,7 @@ class RideTrackingService {
         );
       }
     } catch (e) {
-      print('Error sending status notification: $e');
+      debugPrint('Error sending status notification: $e');
     }
   }
 
@@ -235,7 +236,7 @@ class RideTrackingService {
 
       return Duration(minutes: timeInMinutes);
     } catch (e) {
-      print('Error calculating ETA: $e');
+      debugPrint('Error calculating ETA: $e');
       return const Duration(minutes: 10); // Default fallback
     }
   }

@@ -20,7 +20,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AdminService _adminService = AdminService();
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
-  final int _selectedIndex = 0;
+  // final int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -36,7 +36,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading dashboard stats: $e');
+      debugPrint('Error loading dashboard stats: $e');
       setState(() {
         _isLoading = false;
       });
@@ -53,7 +53,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         );
       }
     } catch (e) {
-      print('Error logging out: $e');
+      debugPrint('Error logging out: $e');
     }
   }
 
@@ -76,7 +76,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: color, size: 24),

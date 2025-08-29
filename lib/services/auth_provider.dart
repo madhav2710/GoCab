@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import 'auth_service.dart';
 import 'notification_manager.dart';
@@ -27,7 +28,7 @@ class AuthProvider extends ChangeNotifier {
   void _init() {
     try {
       _authService.authStateChanges.listen((User? user) {
-        print('Auth state changed: ${user?.uid ?? 'null'}');
+        debugPrint('Auth state changed: ${user?.uid ?? 'null'}');
         _firebaseUser = user;
         if (user != null) {
           _loadUserData(user.uid);
@@ -37,7 +38,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      print('Firebase Auth not available: $e');
+      debugPrint('Firebase Auth not available: $e');
       // Set loading to false so the app can continue
       _isLoading = false;
       notifyListeners();
@@ -65,7 +66,7 @@ class AuthProvider extends ChangeNotifier {
       final token = await notificationService.getFCMToken();
       await _notificationManager.updateUserFCMToken(uid, token);
     } catch (e) {
-      print('Error updating FCM token: $e');
+      debugPrint('Error updating FCM token: $e');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/feedback_model.dart';
 import '../models/ride_model.dart';
 
@@ -56,7 +57,7 @@ class FeedbackService {
         'isAnonymous': isAnonymous,
       }, feedbackDoc.id);
     } catch (e) {
-      print('Error submitting feedback: $e');
+      debugPrint('Error submitting feedback: $e');
       return null;
     }
   }
@@ -74,7 +75,7 @@ class FeedbackService {
           .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      print('Error getting ride feedback: $e');
+      debugPrint('Error getting ride feedback: $e');
       return [];
     }
   }
@@ -86,9 +87,11 @@ class FeedbackService {
         .where('fromUserId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   // Get feedback received by a user
@@ -100,13 +103,15 @@ class FeedbackService {
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return FeedbackModel.fromMap(doc.data(), doc.id);
-        }).toList();
-      });
+            return snapshot.docs.map((doc) {
+              return FeedbackModel.fromMap(doc.data(), doc.id);
+            }).toList();
+          });
     } catch (e) {
-      print('Complex feedback received query failed, trying simple query: $e');
-      
+      debugPrint(
+        'Complex feedback received query failed, trying simple query: $e',
+      );
+
       // Fallback to simple query without ordering
       try {
         return _firestore
@@ -114,12 +119,12 @@ class FeedbackService {
             .where('toUserId', isEqualTo: userId)
             .snapshots()
             .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return FeedbackModel.fromMap(doc.data(), doc.id);
-          }).toList();
-        });
+              return snapshot.docs.map((doc) {
+                return FeedbackModel.fromMap(doc.data(), doc.id);
+              }).toList();
+            });
       } catch (e2) {
-        print('Simple feedback received query also failed: $e2');
+        debugPrint('Simple feedback received query also failed: $e2');
         return Stream.value([]);
       }
     }
@@ -134,13 +139,15 @@ class FeedbackService {
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return FeedbackModel.fromMap(doc.data(), doc.id);
-        }).toList();
-      });
+            return snapshot.docs.map((doc) {
+              return FeedbackModel.fromMap(doc.data(), doc.id);
+            }).toList();
+          });
     } catch (e) {
-      print('Complex feedback given query failed, trying simple query: $e');
-      
+      debugPrint(
+        'Complex feedback given query failed, trying simple query: $e',
+      );
+
       // Fallback to simple query without ordering
       try {
         return _firestore
@@ -148,12 +155,12 @@ class FeedbackService {
             .where('fromUserId', isEqualTo: userId)
             .snapshots()
             .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            return FeedbackModel.fromMap(doc.data(), doc.id);
-          }).toList();
-        });
+              return snapshot.docs.map((doc) {
+                return FeedbackModel.fromMap(doc.data(), doc.id);
+              }).toList();
+            });
       } catch (e2) {
-        print('Simple feedback given query also failed: $e2');
+        debugPrint('Simple feedback given query also failed: $e2');
         return Stream.value([]);
       }
     }
@@ -172,18 +179,16 @@ class FeedbackService {
       }
       return null;
     } catch (e) {
-      print('Error getting user rating: $e');
+      debugPrint('Error getting user rating: $e');
       return null;
     }
   }
 
   // Stream user rating updates
   Stream<UserRating?> getUserRatingStream(String userId) {
-    return _firestore
-        .collection('user_ratings')
-        .doc(userId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('user_ratings').doc(userId).snapshots().map((
+      doc,
+    ) {
       if (doc.exists) {
         return UserRating.fromMap(doc.data()!, userId);
       }
@@ -202,7 +207,7 @@ class FeedbackService {
 
       return feedbackDoc.docs.isNotEmpty;
     } catch (e) {
-      print('Error checking if user rated ride: $e');
+      debugPrint('Error checking if user rated ride: $e');
       return false;
     }
   }
@@ -232,7 +237,7 @@ class FeedbackService {
 
       return ridesNeedingFeedback;
     } catch (e) {
-      print('Error getting rides needing feedback: $e');
+      debugPrint('Error getting rides needing feedback: $e');
       return [];
     }
   }
@@ -262,7 +267,7 @@ class FeedbackService {
 
       return ridesNeedingFeedback;
     } catch (e) {
-      print('Error getting driver rides needing feedback: $e');
+      debugPrint('Error getting driver rides needing feedback: $e');
       return [];
     }
   }
@@ -283,13 +288,18 @@ class FeedbackService {
           .toList();
 
       // Calculate average rating
-      final totalRating = feedbacks.fold<int>(0, (sum, feedback) => sum + feedback.rating);
+      final totalRating = feedbacks.fold<int>(
+        0,
+        (sum, feedback) => sum + feedback.rating,
+      );
       final averageRating = totalRating / feedbacks.length;
 
       // Calculate rating distribution
       final ratingDistribution = <String, int>{};
       for (int i = 1; i <= 5; i++) {
-        ratingDistribution[i.toString()] = feedbacks.where((f) => f.rating == i).length;
+        ratingDistribution[i.toString()] = feedbacks
+            .where((f) => f.rating == i)
+            .length;
       }
 
       // Get common tags
@@ -314,21 +324,18 @@ class FeedbackService {
         'lastUpdated': Timestamp.now(),
       });
     } catch (e) {
-      print('Error updating user rating: $e');
+      debugPrint('Error updating user rating: $e');
     }
   }
 
   // Mark ride as rated by user
   Future<void> _markRideAsRated(String rideId, String userId) async {
     try {
-      await _firestore
-          .collection('rides')
-          .doc(rideId)
-          .update({
+      await _firestore.collection('rides').doc(rideId).update({
         'ratedBy': FieldValue.arrayUnion([userId]),
       });
     } catch (e) {
-      print('Error marking ride as rated: $e');
+      debugPrint('Error marking ride as rated: $e');
     }
   }
 
@@ -355,12 +362,17 @@ class FeedbackService {
       }
 
       // Calculate statistics
-      final totalRating = feedbacks.fold<int>(0, (sum, feedback) => sum + feedback.rating);
+      final totalRating = feedbacks.fold<int>(
+        0,
+        (sum, feedback) => sum + feedback.rating,
+      );
       final averageRating = totalRating / feedbacks.length;
 
       final ratingDistribution = <String, int>{};
       for (int i = 1; i <= 5; i++) {
-        ratingDistribution[i.toString()] = feedbacks.where((f) => f.rating == i).length;
+        ratingDistribution[i.toString()] = feedbacks
+            .where((f) => f.rating == i)
+            .length;
       }
 
       final tagCounts = <String, int>{};
@@ -378,13 +390,15 @@ class FeedbackService {
       // Get recent feedback (last 5)
       final recentFeedback = feedbacks
           .take(5)
-          .map((f) => {
-                'rating': f.rating,
-                'feedbackText': f.feedbackText,
-                'tags': f.tags,
-                'createdAt': f.createdAt,
-                'isAnonymous': f.isAnonymous,
-              })
+          .map(
+            (f) => {
+              'rating': f.rating,
+              'feedbackText': f.feedbackText,
+              'tags': f.tags,
+              'createdAt': f.createdAt,
+              'isAnonymous': f.isAnonymous,
+            },
+          )
           .toList();
 
       return {
@@ -395,7 +409,7 @@ class FeedbackService {
         'recentFeedback': recentFeedback,
       };
     } catch (e) {
-      print('Error getting user feedback stats: $e');
+      debugPrint('Error getting user feedback stats: $e');
       return {};
     }
   }
@@ -411,18 +425,18 @@ class FeedbackService {
       if (!feedbackDoc.exists) return false;
 
       final feedback = FeedbackModel.fromMap(feedbackDoc.data()!, feedbackId);
-      
+
       // Only allow deletion if user created the feedback
       if (feedback.fromUserId != userId) return false;
 
       await _firestore.collection('feedback').doc(feedbackId).delete();
-      
+
       // Update user rating after deletion
       await _updateUserRating(feedback.toUserId);
-      
+
       return true;
     } catch (e) {
-      print('Error deleting feedback: $e');
+      debugPrint('Error deleting feedback: $e');
       return false;
     }
   }

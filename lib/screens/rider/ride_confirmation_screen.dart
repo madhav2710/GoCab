@@ -38,7 +38,7 @@ class RideConfirmationScreen extends StatefulWidget {
 
 class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
   final RideService _rideService = RideService();
-  final DriverMatchingService _driverMatchingService = DriverMatchingService();
+  // final DriverMatchingService _driverMatchingService = DriverMatchingService();
   final PaymentService _paymentService = PaymentService();
   bool _isLoading = false;
   PaymentMethod? _selectedPaymentMethod;

@@ -5,7 +5,7 @@ import '../../models/payment_model.dart';
 import '../../services/payment_service.dart';
 import '../../services/auth_provider.dart';
 import '../../widgets/wallet_recharge_widget.dart';
-import '../../widgets/payment_history_widget.dart';
+// import '../../widgets/payment_history_widget.dart';
 import '../../widgets/custom_button.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -694,106 +694,106 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-  Widget _buildAnalyticsTab() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Monthly Spending Chart
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monthly Spending',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.bar_chart,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Chart coming soon',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Payment Method Distribution
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Payment Method Usage',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildPaymentMethodUsage(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    // Widget _buildAnalyticsTab() {
+  //   return SingleChildScrollView(
+  //     child: Column(
+  //       children: [
+  //         // Monthly Spending Chart
+  //         Container(
+  //           width: double.infinity,
+  //           padding: const EdgeInsets.all(20),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(16),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.grey.withOpacity(0.1),
+  //                 spreadRadius: 1,
+  //                 blurRadius: 8,
+  //                 offset: const Offset(0, 2),
+  //               ),
+  //             ],
+  //           ),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(
+  //                 'Monthly Spending',
+  //                 style: GoogleFonts.poppins(
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.w600,
+  //                   color: Colors.grey[800],
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 16),
+  //               Container(
+  //                 height: 200,
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.grey[50],
+  //                   borderRadius: BorderRadius.circular(12),
+  //                 ),
+  //                 child: Center(
+  //                   child: Column(
+  //                     mainAxisAlignment: MainAxisAlignment.center,
+  //                     children: [
+  //                       Icon(
+  //                         Icons.bar_chart,
+  //                         size: 48,
+  //                         color: Colors.grey[400],
+  //                       ),
+  //                       const SizedBox(height: 8),
+  //                       Text(
+  //                         'Chart coming soon',
+  //                         style: GoogleFonts.poppins(
+  //                           fontSize: 14,
+  //                           color: Colors.grey[600],
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         const SizedBox(height: 16),
+  //
+  //         // Payment Method Distribution
+  //         Container(
+  //           width: double.infinity,
+  //           padding: const EdgeInsets.all(20),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(16),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.grey.withOpacity(0.1),
+  //                 spreadRadius: 1,
+  //                 blurRadius: 8,
+  //                 offset: const Offset(0, 2),
+  //               ),
+  //             ],
+  //           ),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(
+  //                 'Payment Method Usage',
+  //                 style: GoogleFonts.poppins(
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.w600,
+  //                   color: Colors.grey[800],
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 16),
+  //               _buildPaymentMethodUsage(),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildPaymentMethodUsage() {
     final methodCounts = <PaymentMethod, int>{};

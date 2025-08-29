@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 
 class AdminService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Admin Authentication
   Future<bool> isAdmin(String email) async {
@@ -17,7 +18,7 @@ class AdminService {
 
       return adminDoc.docs.isNotEmpty;
     } catch (e) {
-      print('Error checking admin status: $e');
+      debugPrint('Error checking admin status: $e');
       return false;
     }
   }
@@ -36,7 +37,7 @@ class AdminService {
       }
       return null;
     } catch (e) {
-      print('Error getting admin data: $e');
+      debugPrint('Error getting admin data: $e');
       return null;
     }
   }
@@ -47,7 +48,7 @@ class AdminService {
         'lastLoginAt': Timestamp.now(),
       });
     } catch (e) {
-      print('Error updating last login: $e');
+      debugPrint('Error updating last login: $e');
     }
   }
 
@@ -83,7 +84,7 @@ class AdminService {
         'isActive': isActive,
       });
     } catch (e) {
-      print('Error updating user status: $e');
+      debugPrint('Error updating user status: $e');
       throw Exception('Failed to update user status');
     }
   }
@@ -92,7 +93,7 @@ class AdminService {
     try {
       await _firestore.collection('users').doc(userId).delete();
     } catch (e) {
-      print('Error deleting user: $e');
+      debugPrint('Error deleting user: $e');
       throw Exception('Failed to delete user');
     }
   }
@@ -140,7 +141,7 @@ class AdminService {
             : 0,
       };
     } catch (e) {
-      print('Error getting ride analytics: $e');
+      debugPrint('Error getting ride analytics: $e');
       return {};
     }
   }
@@ -157,7 +158,7 @@ class AdminService {
         return data;
       }).toList();
     } catch (e) {
-      print('Error getting system configs: $e');
+      debugPrint('Error getting system configs: $e');
       return [];
     }
   }
@@ -174,7 +175,7 @@ class AdminService {
         'updatedBy': updatedBy,
       });
     } catch (e) {
-      print('Error updating system config: $e');
+      debugPrint('Error updating system config: $e');
       throw Exception('Failed to update system configuration');
     }
   }
@@ -217,7 +218,7 @@ class AdminService {
         'averageRating': averageRating,
       };
     } catch (e) {
-      print('Error getting dashboard stats: $e');
+      debugPrint('Error getting dashboard stats: $e');
       return {};
     }
   }

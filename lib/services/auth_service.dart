@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'notification_service.dart';
@@ -13,7 +14,7 @@ class AuthService {
       _auth = FirebaseAuth.instance;
       _firestore = FirebaseFirestore.instance;
     } catch (e) {
-      print('Firebase services not available: $e');
+      debugPrint('Firebase services not available: $e');
     }
   }
 
@@ -21,7 +22,8 @@ class AuthService {
   User? get currentUser => _auth?.currentUser;
 
   // Auth state changes stream
-  Stream<User?> get authStateChanges => _auth?.authStateChanges() ?? Stream.value(null);
+  Stream<User?> get authStateChanges =>
+      _auth?.authStateChanges() ?? Stream.value(null);
 
   // Sign up with email and password
   Future<UserCredential?> signUpWithEmail({
@@ -34,7 +36,7 @@ class AuthService {
     if (_auth == null || _firestore == null) {
       throw Exception('Firebase services not available');
     }
-    
+
     try {
       UserCredential userCredential = await _auth!
           .createUserWithEmailAndPassword(email: email, password: password);
@@ -77,7 +79,7 @@ class AuthService {
     if (_auth == null) {
       throw Exception('Firebase Auth not available');
     }
-    
+
     try {
       return await _auth!.signInWithEmailAndPassword(
         email: email,
@@ -101,7 +103,7 @@ class AuthService {
     if (_firestore == null) {
       return null;
     }
-    
+
     try {
       DocumentSnapshot doc = await _firestore!
           .collection('users')
@@ -122,7 +124,7 @@ class AuthService {
     if (_firestore == null) {
       return Stream.value(null);
     }
-    
+
     return _firestore!.collection('users').doc(uid).snapshots().map((doc) {
       if (doc.exists) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>);
@@ -136,7 +138,7 @@ class AuthService {
     if (_firestore == null) {
       throw Exception('Firestore not available');
     }
-    
+
     try {
       await _firestore!.collection('users').doc(user.uid).update(user.toMap());
     } catch (e) {

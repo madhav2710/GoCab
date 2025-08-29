@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/ride_model.dart';
 import '../models/user_model.dart';
@@ -55,7 +56,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending ride request notifications: $e');
+      debugPrint('Error sending ride request notifications: $e');
     }
   }
 
@@ -86,7 +87,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending ride status notification: $e');
+      debugPrint('Error sending ride status notification: $e');
     }
   }
 
@@ -120,7 +121,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending ride status notification to driver: $e');
+      debugPrint('Error sending ride status notification to driver: $e');
     }
   }
 
@@ -154,7 +155,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending driver arrival notification: $e');
+      debugPrint('Error sending driver arrival notification: $e');
     }
   }
 
@@ -188,7 +189,7 @@ class NotificationManager {
         additionalData: {'fare': fare},
       );
     } catch (e) {
-      print('Error sending ride completion notification: $e');
+      debugPrint('Error sending ride completion notification: $e');
     }
   }
 
@@ -219,7 +220,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending payment notification: $e');
+      debugPrint('Error sending payment notification: $e');
     }
   }
 
@@ -251,7 +252,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending feedback reminder: $e');
+      debugPrint('Error sending feedback reminder: $e');
     }
   }
 
@@ -272,7 +273,7 @@ class NotificationManager {
         imageUrl: imageUrl,
       );
     } catch (e) {
-      print('Error sending promotion notification: $e');
+      debugPrint('Error sending promotion notification: $e');
     }
   }
 
@@ -294,7 +295,7 @@ class NotificationManager {
         imageUrl: imageUrl,
       );
     } catch (e) {
-      print('Error sending promotion notification to role: $e');
+      debugPrint('Error sending promotion notification to role: $e');
     }
   }
 
@@ -338,7 +339,7 @@ class NotificationManager {
         );
       }
     } catch (e) {
-      print('Error sending emergency alert: $e');
+      debugPrint('Error sending emergency alert: $e');
     }
   }
 
@@ -368,7 +369,7 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      print('Error sending system notification: $e');
+      debugPrint('Error sending system notification: $e');
     }
   }
 
@@ -446,7 +447,7 @@ class NotificationManager {
           break;
       }
     } catch (e) {
-      print('Error handling ride status change: $e');
+      debugPrint('Error handling ride status change: $e');
     }
   }
 

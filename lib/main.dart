@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'services/auth_provider.dart';
 import 'services/notification_service.dart';
@@ -13,12 +14,14 @@ import 'screens/driver/driver_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    print('Firebase initialized successfully');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
-    print('Firebase initialization failed: $e');
+    debugPrint('Firebase initialization failed: $e');
     // Continue without Firebase for now
   }
 
@@ -29,7 +32,7 @@ void main() async {
     await notificationService.initialize();
     await notificationManager.initialize();
   } catch (e) {
-    print('Notification services initialization failed: $e');
+    debugPrint('Notification services initialization failed: $e');
     // Continue without notifications for now
   }
 

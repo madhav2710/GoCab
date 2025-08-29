@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_provider.dart';
 import '../../services/ride_tracking_service.dart';
+import '../../services/ride_history_service.dart';
 import '../../models/ride_model.dart';
 import 'ride_booking_screen.dart';
 import 'ride_tracking_screen.dart';
+import 'ride_history_screen.dart';
 import 'wallet_screen.dart';
 import '../feedback/feedback_history_screen.dart';
 import '../notification_settings_screen.dart';
@@ -19,27 +22,113 @@ class RiderHomeScreen extends StatefulWidget {
 
 class _RiderHomeScreenState extends State<RiderHomeScreen> {
   final RideTrackingService _trackingService = RideTrackingService();
+  final RideHistoryService _historyService = RideHistoryService();
   RideModel? _currentRide;
+  List<RideModel> _recentRides = [];
+  StreamSubscription<RideModel?>? _currentRideSubscription;
 
   @override
   void initState() {
     super.initState();
-    _checkCurrentRide();
+    _loadData();
+    _setupCurrentRideStream();
   }
 
-  Future<void> _checkCurrentRide() async {
+  @override
+  void dispose() {
+    _currentRideSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final user = authProvider.userModel;
 
       if (user != null) {
-        final currentRide = await _trackingService.getCurrentRide(user.uid);
-        setState(() {
-          _currentRide = currentRide;
-        });
+        // Load recent rides (current ride will be handled by stream)
+        await _loadRecentRides();
       }
     } catch (e) {
-      print('Error checking current ride: $e');
+      print('Error loading data: $e');
+    }
+  }
+
+  void _setupCurrentRideStream() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.userModel;
+
+    if (user != null) {
+      // Cancel existing subscription if any
+      _currentRideSubscription?.cancel();
+      
+      // Listen to current ride updates
+      _currentRideSubscription = _trackingService
+          .streamCurrentRide(user.uid)
+          .listen((ride) {
+        if (mounted) {
+          setState(() {
+            _currentRide = ride;
+          });
+          print('Current ride updated: ${ride?.status}');
+        }
+      });
+    }
+  }
+
+
+
+  Future<void> _loadRecentRides() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.userModel;
+
+      if (user != null) {
+        final recentRides = await _historyService.getRecentRides(user.uid);
+        if (mounted) {
+          setState(() {
+            _recentRides = recentRides;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading recent rides: $e');
+    }
+  }
+
+  Future<void> _refreshData() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.userModel;
+
+      if (user != null) {
+        // Refresh recent rides
+        await _loadRecentRides();
+        
+        // Re-setup current ride stream
+        _setupCurrentRideStream();
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Data refreshed successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error refreshing data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -58,6 +147,12 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              _refreshData();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
             onPressed: () {
@@ -104,9 +199,12 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+          return RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Welcome Section
@@ -257,6 +355,73 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                ] else ...[
+                  // No Current Ride Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.local_taxi_outlined,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No Active Ride',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Book a ride to get started',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RideBookingScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'Book a Ride',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                 ],
 
                 // Quick Actions
@@ -296,10 +461,10 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                         subtitle: 'Past trips',
                         color: Colors.orange,
                         onTap: () {
-                          // TODO: Navigate to ride history
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ride history coming soon!'),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RideHistoryScreen(),
                             ),
                           );
                         },
@@ -361,31 +526,87 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                if (_recentRides.isEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        _buildActivityItem(
+                          icon: Icons.local_taxi,
+                          title: 'No recent rides',
+                          subtitle: 'Your ride history will appear here',
+                          color: Colors.grey,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      _buildActivityItem(
-                        icon: Icons.local_taxi,
-                        title: 'No recent rides',
-                        subtitle: 'Your ride history will appear here',
-                        color: Colors.grey,
-                      ),
-                    ],
+                ] else ...[
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _recentRides.length > 3 ? 3 : _recentRides.length,
+                    itemBuilder: (context, index) {
+                      final ride = _recentRides[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: _buildActivityItem(
+                          icon: Icons.local_taxi,
+                          title: '${ride.pickupAddress} → ${ride.dropoffAddress}',
+                          subtitle: '${_formatDate(ride.createdAt)} • \$${(ride.actualFare ?? ride.estimatedFare).toStringAsFixed(2)}',
+                          color: ride.status == RideStatus.completed ? Colors.green : Colors.red,
+                        ),
+                      );
+                    },
                   ),
-                ),
+                  if (_recentRides.length > 3) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RideHistoryScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'View All Rides',
+                          style: GoogleFonts.poppins(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
 
                 const SizedBox(height: 24),
 
@@ -413,10 +634,29 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                 ),
               ],
             ),
+            ),
           );
         },
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        return '${difference.inMinutes} minutes ago';
+      }
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
   }
 
   String _getStatusText(RideStatus status) {

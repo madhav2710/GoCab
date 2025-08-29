@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:flutter/foundation.dart';
 
 class LocationService {
   // Get current location with proper error handling
@@ -8,7 +9,7 @@ class LocationService {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('Location services are disabled.');
+        debugPrint('Location services are disabled.');
         return null;
       }
 
@@ -17,13 +18,13 @@ class LocationService {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          print('Location permissions are denied');
+          debugPrint('Location permissions are denied');
           return null;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        print('Location permissions are permanently denied');
+        debugPrint('Location permissions are permanently denied');
         return null;
       }
 
@@ -33,7 +34,7 @@ class LocationService {
         timeLimit: const Duration(seconds: 10),
       );
     } catch (e) {
-      print('Error getting current location: $e');
+      debugPrint('Error getting current location: $e');
       return null;
     }
   }
@@ -48,7 +49,7 @@ class LocationService {
       }
       return null;
     } catch (e) {
-      print('Error getting address from coordinates: $e');
+      debugPrint('Error getting address from coordinates: $e');
       return null;
     }
   }
@@ -65,7 +66,7 @@ class LocationService {
       }
       return null;
     } catch (e) {
-      print('Error getting coordinates from address: $e');
+      debugPrint('Error getting coordinates from address: $e');
       return null;
     }
   }
@@ -75,11 +76,11 @@ class LocationService {
     return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) / 1000; // Convert to kilometers
   }
 
-  // Get default location (San Francisco) as fallback
+  // Get default location (Mumbai, India) as fallback
   Map<String, double> getDefaultLocation() {
     return {
-      'latitude': 37.7749,
-      'longitude': -122.4194,
+      'latitude': 19.0760,
+      'longitude': 72.8777,
     };
   }
 
@@ -90,7 +91,7 @@ class LocationService {
       return permission == LocationPermission.whileInUse || 
              permission == LocationPermission.always;
     } catch (e) {
-      print('Error checking location permission: $e');
+      debugPrint('Error checking location permission: $e');
       return false;
     }
   }
@@ -102,7 +103,7 @@ class LocationService {
       return permission == LocationPermission.whileInUse || 
              permission == LocationPermission.always;
     } catch (e) {
-      print('Error requesting location permission: $e');
+      debugPrint('Error requesting location permission: $e');
       return false;
     }
   }

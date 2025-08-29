@@ -13,10 +13,7 @@ import '../feedback/feedback_screen.dart';
 class RideTrackingScreen extends StatefulWidget {
   final RideModel ride;
 
-  const RideTrackingScreen({
-    super.key,
-    required this.ride,
-  });
+  const RideTrackingScreen({super.key, required this.ride});
 
   @override
   State<RideTrackingScreen> createState() => _RideTrackingScreenState();
@@ -28,12 +25,12 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
-  
+
   RideModel? _currentRide;
   UserModel? _driver;
   Duration? _eta;
-  final bool _isLoading = true;
-  bool _hasShownFeedbackPrompt = false;
+  bool _isLoading = true; // Changed from final to mutable
+  // bool _hasShownFeedbackPrompt = false;
 
   @override
   void initState() {
@@ -41,26 +38,53 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     _initializeTracking();
   }
 
-  void _initializeTracking() {
-    // Stream ride updates
-    _trackingService.streamCurrentRide(widget.ride.riderId).listen((ride) {
-      if (ride != null) {
-        setState(() {
-          _currentRide = ride;
-        });
-      }
-    });
+  void _initializeTracking() async {
+    try {
+      // Initialize with the passed ride
+      setState(() {
+        _currentRide = widget.ride;
+      });
 
-    // Stream driver location if driver is assigned
-    if (widget.ride.driverId != null) {
-      _trackingService.streamDriverLocation(widget.ride.driverId!).listen((driver) {
-        if (driver != null) {
+      // Update map markers
+      await _updateMapMarkers();
+
+      // Stream ride updates
+      _trackingService.streamCurrentRide(widget.ride.riderId).listen((ride) {
+        if (ride != null && mounted) {
           setState(() {
-            _driver = driver;
+            _currentRide = ride;
           });
-          _updateETA();
         }
       });
+
+      // Stream driver location if driver is assigned
+      if (widget.ride.driverId != null) {
+        _trackingService.streamDriverLocation(widget.ride.driverId!).listen((
+          driver,
+        ) {
+          if (driver != null && mounted) {
+            setState(() {
+              _driver = driver;
+            });
+            _updateETA();
+            _updateMapMarkers();
+          }
+        });
+      }
+
+      // Set loading to false after initialization
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error initializing tracking: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -80,12 +104,15 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
 
   Future<void> _updateMapMarkers() async {
     final markers = <Marker>{};
-    
+
     // Add pickup marker
     markers.add(
       Marker(
         markerId: const MarkerId('pickup'),
-        position: LatLng(widget.ride.pickupLatitude, widget.ride.pickupLongitude),
+        position: LatLng(
+          widget.ride.pickupLatitude,
+          widget.ride.pickupLongitude,
+        ),
         infoWindow: InfoWindow(
           title: 'Pickup Location',
           snippet: widget.ride.pickupAddress,
@@ -98,7 +125,10 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     markers.add(
       Marker(
         markerId: const MarkerId('dropoff'),
-        position: LatLng(widget.ride.dropoffLatitude, widget.ride.dropoffLongitude),
+        position: LatLng(
+          widget.ride.dropoffLatitude,
+          widget.ride.dropoffLongitude,
+        ),
         infoWindow: InfoWindow(
           title: 'Dropoff Location',
           snippet: widget.ride.dropoffAddress,
@@ -268,7 +298,9 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
                           children: [
                             CircleAvatar(
                               radius: 25,
-                              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).primaryColor.withOpacity(0.1),
                               child: Icon(
                                 Icons.person,
                                 color: Theme.of(context).primaryColor,
@@ -299,7 +331,10 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.phone, color: Colors.green),
+                              icon: const Icon(
+                                Icons.phone,
+                                color: Colors.green,
+                              ),
                               onPressed: () {
                                 // TODO: Implement call functionality
                               },
@@ -315,7 +350,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
                           Expanded(
                             child: _buildInfoCard(
                               'ETA',
-                              _eta != null 
+                              _eta != null
                                   ? '${_eta!.inMinutes} min'
                                   : 'Calculating...',
                               Icons.access_time,
@@ -406,7 +441,12 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon, Color color) {
+  Widget _buildInfoCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -428,17 +468,19 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
           ),
           Text(
             title,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLocationRow(String title, String address, IconData icon, Color color) {
+  Widget _buildLocationRow(
+    String title,
+    String address,
+    IconData icon,
+    Color color,
+  ) {
     return Row(
       children: [
         Icon(icon, color: color, size: 20),
@@ -457,10 +499,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
               ),
               Text(
                 address,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
               ),
             ],
           ),
@@ -472,9 +511,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
   void _fitBounds() {
     if (_mapController != null && _markers.isNotEmpty) {
       final bounds = _calculateBounds();
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 50),
-      );
+      _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
     }
   }
 
@@ -512,10 +549,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'No',
-              style: GoogleFonts.poppins(),
-            ),
+            child: Text('No', style: GoogleFonts.poppins()),
           ),
           TextButton(
             onPressed: () {
@@ -538,7 +572,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
         widget.ride.id,
         RideStatus.cancelled,
       );
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -561,15 +595,17 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
   }
 
   void _showFeedbackPrompt() {
-    setState(() {
-      _hasShownFeedbackPrompt = true;
-    });
+    // setState(() {
+    //   _hasShownFeedbackPrompt = true;
+    // });
 
     // Check if user has already rated this ride
     final currentUser = context.read<AuthProvider>().userModel;
     if (currentUser == null) return;
 
-    _feedbackService.hasUserRatedRide(widget.ride.id, currentUser.uid).then((hasRated) {
+    _feedbackService.hasUserRatedRide(widget.ride.id, currentUser.uid).then((
+      hasRated,
+    ) {
       if (!hasRated && mounted) {
         _showFeedbackDialog();
       }
@@ -605,10 +641,8 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => FeedbackScreen(
-                    ride: widget.ride,
-                    otherUser: _driver,
-                  ),
+                  builder: (context) =>
+                      FeedbackScreen(ride: widget.ride, otherUser: _driver),
                 ),
               );
             },

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/ride_model.dart';
 import '../models/user_model.dart';
 import 'driver_matching_service.dart';
@@ -45,7 +46,7 @@ class RideService {
 
       return docRef.id;
     } catch (e) {
-      print('Error creating ride request: $e');
+      debugPrint('Error creating ride request: $e');
       rethrow;
     }
   }
@@ -66,7 +67,7 @@ class RideService {
             }).toList();
           });
     } catch (e) {
-      print('Error getting rides for rider: $e');
+      debugPrint('Error getting rides for rider: $e');
       // Return empty stream if there's an index error
       return Stream.value([]);
     }
@@ -100,7 +101,7 @@ class RideService {
       }
       return null;
     } catch (e) {
-      print('Complex query failed, trying simple query: $e');
+      debugPrint('Complex query failed, trying simple query: $e');
 
       // Fallback to simple query without ordering
       try {
@@ -127,7 +128,7 @@ class RideService {
         }
         return null;
       } catch (e2) {
-        print('Simple query also failed: $e2');
+        debugPrint('Simple query also failed: $e2');
         return null;
       }
     }
@@ -152,7 +153,7 @@ class RideService {
             }).toList();
           });
     } catch (e) {
-      print('Complex pending rides query failed, trying simple query: $e');
+      debugPrint('Complex pending rides query failed, trying simple query: $e');
 
       // Fallback to simple query without ordering
       try {
@@ -171,7 +172,7 @@ class RideService {
               }).toList();
             });
       } catch (e2) {
-        print('Simple pending rides query also failed: $e2');
+        debugPrint('Simple pending rides query also failed: $e2');
         return Stream.value([]);
       }
     }
@@ -183,7 +184,7 @@ class RideService {
       if (rideId.isEmpty) {
         throw Exception('Ride ID is required');
       }
-      
+
       if (driverId.isEmpty) {
         throw Exception('Driver ID is required');
       }
@@ -196,7 +197,7 @@ class RideService {
 
       final rideData = rideDoc.data()!;
       final riderId = rideData['riderId'] as String?;
-      
+
       if (riderId == null || riderId.isEmpty) {
         throw Exception('Rider ID not found in ride data');
       }
@@ -224,11 +225,11 @@ class RideService {
           type: NotificationType.rideStatus,
         );
       } catch (notificationError) {
-        print('Error sending notification: $notificationError');
+        debugPrint('Error sending notification: $notificationError');
         // Don't throw here as the main operation succeeded
       }
     } catch (e) {
-      print('Error assigning driver to ride: $e');
+      debugPrint('Error assigning driver to ride: $e');
       rethrow;
     }
   }
@@ -241,7 +242,7 @@ class RideService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating ride status: $e');
+      debugPrint('Error updating ride status: $e');
       rethrow;
     }
   }
@@ -280,7 +281,7 @@ class RideService {
         await assignDriverToRide(rideId, nearestDriver.uid);
       }
     } catch (e) {
-      print('Error finding driver for ride: $e');
+      debugPrint('Error finding driver for ride: $e');
     }
   }
 
@@ -295,7 +296,7 @@ class RideService {
       }
       return null;
     } catch (e) {
-      print('Error getting ride by ID: $e');
+      debugPrint('Error getting ride by ID: $e');
       return null;
     }
   }
@@ -309,7 +310,7 @@ class RideService {
       }
       return null;
     } catch (e) {
-      print('Error getting driver by ID: $e');
+      debugPrint('Error getting driver by ID: $e');
       return null;
     }
   }

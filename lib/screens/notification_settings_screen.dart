@@ -31,7 +31,7 @@ class _NotificationSettingsScreenState
     setState(() => _isLoading = true);
 
     try {
-      final settings = await _notificationManager.getNotificationSettings();
+      // final settings = await _notificationManager.getNotificationSettings();
       final isEnabled = await _notificationManager.areNotificationsEnabled();
 
       if (mounted) {
