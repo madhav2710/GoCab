@@ -35,13 +35,9 @@ class _RatingWidgetState extends State<RatingWidget>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -105,10 +101,7 @@ class _RatingWidgetState extends State<RatingWidget>
         // Rating Description
         Text(
           _getRatingDescription(_rating),
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
+          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
@@ -182,8 +175,8 @@ class RatingDisplayWidget extends StatelessWidget {
               isFilled
                   ? Icons.star
                   : isHalfFilled
-                      ? Icons.star_half
-                      : Icons.star_border,
+                  ? Icons.star_half
+                  : Icons.star_border,
               size: size,
               color: isFilled || isHalfFilled ? Colors.amber : Colors.grey[400],
             );

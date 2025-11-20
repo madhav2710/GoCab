@@ -207,7 +207,7 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
     try {
       if (_currentPosition == null) return;
 
-      final String apiKey = 'AIzaSyCQ2xpJ042ReuzwhDtFXgwUBwjynHacdCw';
+      final String apiKey = 'AIzaSyAyp9YZ4kSXD9O94KJyLNfp99AtcnOmMbY';
       String origin, destination;
 
       // Determine route based on current ride status
@@ -747,7 +747,7 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
     if (_currentPosition == null || _currentRide == null) return;
 
     try {
-      final String apiKey = 'AIzaSyCQ2xpJ042ReuzwhDtFXgwUBwjynHacdCw';
+      final String apiKey = 'AIzaSyAyp9YZ4kSXD9O94KJyLNfp99AtcnOmMbY';
       final String origin =
           '${_currentPosition!.latitude},${_currentPosition!.longitude}';
       final String destination =
@@ -1261,7 +1261,7 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
                           Expanded(
                             child: _buildRideDetail(
                               'Fare',
-                              '\$${widget.ride.estimatedFare.toStringAsFixed(2)}',
+                              '₹${widget.ride.estimatedFare.toStringAsFixed(2)}',
                               Icons.attach_money,
                               Colors.green,
                             ),

@@ -34,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
           _loadUserData(user.uid);
         } else {
           _userModel = null;
+          debugPrint('🔐 AuthProvider: User signed out, clearing user data');
         }
         notifyListeners();
       });
@@ -88,10 +89,10 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         role: role,
       );
-      
+
       // Sign out after successful signup so user can manually sign in
       await signOut();
-      
+
       _setLoading(false);
       return true;
     } catch (e) {
@@ -107,13 +108,13 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authService.signInWithEmail(email: email, password: password);
-      
+
       // Manually update the authentication state
       _firebaseUser = _authService.currentUser;
       if (_firebaseUser != null) {
         await _loadUserData(_firebaseUser!.uid);
       }
-      
+
       _setLoading(false);
       return true;
     } catch (e) {
@@ -124,15 +125,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    debugPrint('🔐 AuthProvider: Starting sign-out process...');
     _setLoading(true);
     try {
+      // Sign out from Firebase - this will trigger the auth state listener
+      debugPrint('🔐 AuthProvider: Calling Firebase signOut...');
       await _authService.signOut();
-      _firebaseUser = null;
-      _userModel = null;
+      debugPrint('🔐 AuthProvider: Firebase signOut completed');
     } catch (e) {
+      debugPrint('❌ AuthProvider: Error during sign-out: $e');
       _setError(e.toString());
     }
     _setLoading(false);
+    debugPrint('🔐 AuthProvider: Sign-out process completed');
   }
 
   void _setLoading(bool loading) {

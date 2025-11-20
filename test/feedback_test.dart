@@ -33,13 +33,7 @@ void main() {
         userId: 'user_123',
         averageRating: 4.5,
         totalRatings: 10,
-        ratingDistribution: {
-          '1': 0,
-          '2': 1,
-          '3': 2,
-          '4': 4,
-          '5': 3,
-        },
+        ratingDistribution: {'1': 0, '2': 1, '3': 2, '4': 4, '5': 3},
         commonTags: ['Safe Driving', 'Friendly', 'Punctual'],
         lastUpdated: DateTime.now(),
       );

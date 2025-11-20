@@ -1,17 +1,15 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_provider.dart';
-import '../../services/ride_tracking_service.dart';
 import '../../services/ride_history_service.dart';
-import '../../models/ride_model.dart';
-import 'ride_booking_screen.dart';
-import 'ride_tracking_screen.dart';
+import '../../models/ride_request_model.dart';
+import '../../providers/ride_request_provider.dart';
+import 'new_ride_booking_screen.dart';
+import 'new_ride_tracking_screen.dart';
 import 'ride_history_screen.dart';
-import 'wallet_screen.dart';
-import '../feedback/feedback_history_screen.dart';
-import '../notification_settings_screen.dart';
+import 'carpool_discovery_screen.dart';
 
 class RiderHomeScreen extends StatefulWidget {
   const RiderHomeScreen({super.key});
@@ -21,23 +19,23 @@ class RiderHomeScreen extends StatefulWidget {
 }
 
 class _RiderHomeScreenState extends State<RiderHomeScreen> {
-  final RideTrackingService _trackingService = RideTrackingService();
   final RideHistoryService _historyService = RideHistoryService();
-  RideModel? _currentRide;
-  List<RideModel> _recentRides = [];
-  StreamSubscription<RideModel?>? _currentRideSubscription;
+  List<RideRequestModel> _recentRides = [];
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _setupCurrentRideStream();
+    _initializeRideProvider();
   }
 
-  @override
-  void dispose() {
-    _currentRideSubscription?.cancel();
-    super.dispose();
+  void _initializeRideProvider() {
+    // Initialize the RideRequestProvider to start listening for current rides
+    final rideProvider = Provider.of<RideRequestProvider>(
+      context,
+      listen: false,
+    );
+    rideProvider.initialize();
   }
 
   Future<void> _loadData() async {
@@ -46,37 +44,15 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
       final user = authProvider.userModel;
 
       if (user != null) {
-        // Load recent rides (current ride will be handled by stream)
+        // Load recent rides
         await _loadRecentRides();
       }
     } catch (e) {
-      print('Error loading data: $e');
+      if (kDebugMode) {
+        print('Error loading data: $e');
+      }
     }
   }
-
-  void _setupCurrentRideStream() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.userModel;
-
-    if (user != null) {
-      // Cancel existing subscription if any
-      _currentRideSubscription?.cancel();
-      
-      // Listen to current ride updates
-      _currentRideSubscription = _trackingService
-          .streamCurrentRide(user.uid)
-          .listen((ride) {
-        if (mounted) {
-          setState(() {
-            _currentRide = ride;
-          });
-          print('Current ride updated: ${ride?.status}');
-        }
-      });
-    }
-  }
-
-
 
   Future<void> _loadRecentRides() async {
     try {
@@ -84,7 +60,9 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
       final user = authProvider.userModel;
 
       if (user != null) {
-        final recentRides = await _historyService.getRecentRides(user.uid);
+        final recentRides = await _historyService.getRecentRideRequests(
+          user.uid,
+        );
         if (mounted) {
           setState(() {
             _recentRides = recentRides;
@@ -92,7 +70,9 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
         }
       }
     } catch (e) {
-      print('Error loading recent rides: $e');
+      if (kDebugMode) {
+        print('Error loading recent rides: $e');
+      }
     }
   }
 
@@ -104,10 +84,7 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
       if (user != null) {
         // Refresh recent rides
         await _loadRecentRides();
-        
-        // Re-setup current ride stream
-        _setupCurrentRideStream();
-        
+
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +97,9 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
         }
       }
     } catch (e) {
-      print('Error refreshing data: $e');
+      if (kDebugMode) {
+        print('Error refreshing data: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -154,37 +133,6 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const WalletScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.rate_review, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FeedbackHistoryScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.person, color: Colors.white),
             onPressed: () {
               // TODO: Navigate to profile
@@ -192,9 +140,10 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
           ),
         ],
       ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
+      body: Consumer2<AuthProvider, RideRequestProvider>(
+        builder: (context, authProvider, rideProvider, child) {
           final user = authProvider.userModel;
+          final currentRide = rideProvider.currentRide;
           if (user == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -205,58 +154,9 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome Section
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).primaryColor,
-                        Theme.of(context).primaryColor.withOpacity(0.8),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back,',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.name,
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Where would you like to go today?',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Current Ride Section
-                if (_currentRide != null) ...[
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Section
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -274,366 +174,437 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.local_taxi,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Current Ride',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _getStatusText(_currentRide!.status),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
                         Text(
-                          '${_currentRide!.pickupAddress} → ${_currentRide!.dropoffAddress}',
+                          'Welcome back,',
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      RideTrackingScreen(ride: _currentRide!),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Theme.of(context).primaryColor,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Track Ride',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            fontSize: 16,
+                            color: Colors.white70,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  // No Current Ride Section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.local_taxi_outlined,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 4),
                         Text(
-                          'No Active Ride',
+                          user.name,
                           style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Book a ride to get started',
+                          'Where would you like to go today?',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RideBookingScreen(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Book a Ride',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            color: Colors.white70,
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 24),
-                ],
 
-                // Quick Actions
-                Text(
-                  'Quick Actions',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.location_on,
-                        title: 'Book Ride',
-                        subtitle: 'Find a driver',
-                        color: Theme.of(context).primaryColor,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RideBookingScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.history,
-                        title: 'Ride History',
-                        subtitle: 'Past trips',
-                        color: Colors.orange,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RideHistoryScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.favorite,
-                        title: 'Saved Places',
-                        subtitle: 'Frequent destinations',
-                        color: Colors.red,
-                        onTap: () {
-                          // TODO: Navigate to saved places
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Saved places coming soon!'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.support_agent,
-                        title: 'Support',
-                        subtitle: 'Get help',
-                        color: Colors.green,
-                        onTap: () {
-                          // TODO: Navigate to support
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Support feature coming soon!'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Recent Activity
-                Text(
-                  'Recent Activity',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (_recentRides.isEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _buildActivityItem(
-                          icon: Icons.local_taxi,
-                          title: 'No recent rides',
-                          subtitle: 'Your ride history will appear here',
-                          color: Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _recentRides.length > 3 ? 3 : _recentRides.length,
-                    itemBuilder: (context, index) {
-                      final ride = _recentRides[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.1),
-                              spreadRadius: 1,
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _buildActivityItem(
-                          icon: Icons.local_taxi,
-                          title: '${ride.pickupAddress} → ${ride.dropoffAddress}',
-                          subtitle: '${_formatDate(ride.createdAt)} • \$${(ride.actualFare ?? ride.estimatedFare).toStringAsFixed(2)}',
-                          color: ride.status == RideStatus.completed ? Colors.green : Colors.red,
-                        ),
-                      );
-                    },
-                  ),
-                  if (_recentRides.length > 3) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
+                  // Current Ride Section
+                  if (currentRide != null) ...[
+                    Container(
                       width: double.infinity,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RideHistoryScreen(),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).primaryColor,
+                            Theme.of(context).primaryColor.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.local_taxi,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Current Ride',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _getStatusText(currentRide.status),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '${currentRide.pickupAddress} → ${currentRide.dropoffAddress}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
                             ),
-                          );
-                        },
-                        child: Text(
-                          'View All Rides',
-                          style: GoogleFonts.poppins(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w600,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => NewRideTrackingScreen(
+                                      rideRequest: currentRide,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Theme.of(context).primaryColor,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                'Track Ride',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    // No Current Ride Section
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.local_taxi_outlined,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No Active Ride',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Book a ride to get started',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const NewRideBookingScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                'Book a Ride',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Quick Actions
+                  Text(
+                    'Quick Actions',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          icon: Icons.location_on,
+                          title: 'Book Ride',
+                          subtitle: 'Find a driver',
+                          color: Theme.of(context).primaryColor,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const NewRideBookingScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          icon: Icons.history,
+                          title: 'Ride History',
+                          subtitle: 'Past trips',
+                          color: Colors.orange,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RideHistoryScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          icon: Icons.people,
+                          title: 'Find Carpool',
+                          subtitle: 'Join shared rides',
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const CarpoolDiscoveryScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildQuickActionCard(
+                          icon: Icons.support_agent,
+                          title: 'Support',
+                          subtitle: 'Get help',
+                          color: Colors.green,
+                          onTap: () {
+                            // TODO: Navigate to support
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Support feature coming soon!'),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Recent Activity
+                  Text(
+                    'Recent Activity',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (_recentRides.isEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildActivityItem(
+                            icon: Icons.local_taxi,
+                            title: 'No recent rides',
+                            subtitle: 'Your ride history will appear here',
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _recentRides.length > 3
+                          ? 3
+                          : _recentRides.length,
+                      itemBuilder: (context, index) {
+                        final ride = _recentRides[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                spreadRadius: 1,
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: _buildActivityItem(
+                            icon: Icons.local_taxi,
+                            title:
+                                '${ride.pickupAddress} → ${ride.dropoffAddress}',
+                            subtitle:
+                                '${_formatDate(ride.createdAt)} • ₹${ride.actualFare.toStringAsFixed(2)}',
+                            color: ride.status == RideRequestStatus.completed
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        );
+                      },
+                    ),
+                    if (_recentRides.length > 3) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RideHistoryScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'View All Rides',
+                            style: GoogleFonts.poppins(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Sign Out Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await authProvider.signOut();
-                    },
-                    icon: const Icon(Icons.logout),
-                    label: Text(
-                      'Sign Out',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  // Sign Out Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        // Force cleanup of ride request provider data before signing out
+                        final rideProvider = Provider.of<RideRequestProvider>(
+                          context,
+                          listen: false,
+                        );
+                        debugPrint('🛑 Starting sign-out process...');
+                        rideProvider.forceCleanup();
+                        await authProvider.signOut();
+                        debugPrint('✅ Sign-out process completed');
+                      },
+                      icon: const Icon(Icons.logout),
+                      label: Text(
+                        'Sign Out',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           );
         },
@@ -659,24 +630,18 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
     }
   }
 
-  String _getStatusText(RideStatus status) {
+  String _getStatusText(RideRequestStatus status) {
     switch (status) {
-      case RideStatus.pending:
+      case RideRequestStatus.pending:
         return 'Pending';
-      case RideStatus.accepted:
+      case RideRequestStatus.accepted:
         return 'Accepted';
-      case RideStatus.inProgress:
+      case RideRequestStatus.inProgress:
         return 'In Progress';
-      case RideStatus.arrived:
-        return 'Arrived';
-      case RideStatus.pickupComplete:
-        return 'On Way';
-      case RideStatus.completed:
+      case RideRequestStatus.completed:
         return 'Completed';
-      case RideStatus.cancelled:
+      case RideRequestStatus.cancelled:
         return 'Cancelled';
-      default:
-        return 'Unknown';
     }
   }
 

@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_provider.dart';
 import '../../services/ride_service.dart';
-import '../../services/driver_matching_service.dart';
 import '../../services/payment_service.dart';
-import '../../models/ride_model.dart';
+import '../../models/ride_request_model.dart' as ride_request;
 import '../../models/payment_model.dart';
+import '../../models/carpool_ride_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/payment_method_selector.dart';
+import '../../providers/ride_request_provider.dart';
+import '../../services/carpool_service.dart';
+import 'new_ride_tracking_screen.dart';
 
 class RideConfirmationScreen extends StatefulWidget {
   final String pickupAddress;
@@ -17,7 +20,7 @@ class RideConfirmationScreen extends StatefulWidget {
   final double pickupLongitude;
   final double dropoffLatitude;
   final double dropoffLongitude;
-  final RideType rideType;
+  final ride_request.RideType rideType;
   final double estimatedFare;
 
   const RideConfirmationScreen({
@@ -37,8 +40,7 @@ class RideConfirmationScreen extends StatefulWidget {
 }
 
 class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
-  final RideService _rideService = RideService();
-  // final DriverMatchingService _driverMatchingService = DriverMatchingService();
+  final CarpoolService _carpoolService = CarpoolService();
   final PaymentService _paymentService = PaymentService();
   bool _isLoading = false;
   PaymentMethod? _selectedPaymentMethod;
@@ -81,24 +83,31 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final rideProvider = Provider.of<RideRequestProvider>(
+        context,
+        listen: false,
+      );
       final user = authProvider.userModel;
 
       if (user == null) {
         throw Exception('User not found');
       }
 
-      // Create ride request
-      final rideId = await _rideService.createRideRequest(
-        riderId: user.uid,
-        pickupLat: widget.pickupLatitude,
-        pickupLng: widget.pickupLongitude,
-        dropoffLat: widget.dropoffLatitude,
-        dropoffLng: widget.dropoffLongitude,
+      // Create ride request using RideRequestProvider (works with ride_requests collection)
+      final rideId = await rideProvider.createRideRequest(
         pickupAddress: widget.pickupAddress,
         dropoffAddress: widget.dropoffAddress,
-        rideType: widget.rideType,
+        pickupLatitude: widget.pickupLatitude,
+        pickupLongitude: widget.pickupLongitude,
+        dropoffLatitude: widget.dropoffLatitude,
+        dropoffLongitude: widget.dropoffLongitude,
         estimatedFare: widget.estimatedFare,
+        rideType: widget.rideType,
       );
+
+      if (rideId == null) {
+        throw Exception('Failed to create ride request');
+      }
 
       // Process payment
       final payment = await _paymentService.processRidePayment(
@@ -112,6 +121,16 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
         throw Exception('Payment processing failed');
       }
 
+      // If this is a carpool ride, create a carpool ride that others can join
+      if (widget.rideType == ride_request.RideType.carpool) {
+        try {
+          await _createCarpoolRide(user.uid, rideId);
+        } catch (e) {
+          debugPrint('Failed to create carpool ride: $e');
+          // Continue with normal ride flow even if carpool creation fails
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -122,8 +141,14 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
           ),
         );
 
-        // Navigate back to rider home screen
-        Navigator.popUntil(context, (route) => route.isFirst);
+        // Navigate to ride tracking screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                NewRideTrackingScreen(rideRequest: rideProvider.currentRide!),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -225,7 +250,7 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          widget.rideType == RideType.carpool
+                          widget.rideType == ride_request.RideType.carpool
                               ? Icons.people
                               : Icons.person,
                           color: Theme.of(context).primaryColor,
@@ -245,7 +270,7 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
                               ),
                             ),
                             Text(
-                              widget.rideType == RideType.carpool
+                              widget.rideType == ride_request.RideType.carpool
                                   ? 'Carpool'
                                   : 'Solo',
                               style: GoogleFonts.poppins(
@@ -305,7 +330,7 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
                         ),
                       ),
                       Text(
-                        '\$${widget.estimatedFare.toStringAsFixed(2)}',
+                        '₹${widget.estimatedFare.toStringAsFixed(2)}',
                         style: GoogleFonts.poppins(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -315,7 +340,7 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
                     ],
                   ),
 
-                  if (widget.rideType == RideType.carpool) ...[
+                  if (widget.rideType == ride_request.RideType.carpool) ...[
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -470,5 +495,42 @@ class _RideConfirmationScreenState extends State<RideConfirmationScreen> {
         ),
       ],
     );
+  }
+
+  // Create a carpool ride that others can join
+  Future<void> _createCarpoolRide(String riderId, String rideId) async {
+    try {
+      // Get user name from auth provider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.userModel;
+
+      // Create a carpool rider from the current user
+      final carpoolRider = CarpoolRider(
+        riderId: riderId,
+        riderName: user?.name ?? 'Unknown User',
+        pickupAddress: widget.pickupAddress,
+        dropoffAddress: widget.dropoffAddress,
+        pickupLatitude: widget.pickupLatitude,
+        pickupLongitude: widget.pickupLongitude,
+        dropoffLatitude: widget.dropoffLatitude,
+        dropoffLongitude: widget.dropoffLongitude,
+        fare: widget.estimatedFare * 0.7, // 30% discount for carpool
+        status: CarpoolRiderStatus.waiting,
+        joinedAt: DateTime.now(),
+      );
+
+      // Create carpool ride with the current user as the first rider
+      await _carpoolService.createCarpoolRide(
+        driverId:
+            riderId, // For now, use rider as driver (will be updated when driver accepts)
+        riders: [carpoolRider],
+        maxSeats: 4, // Maximum 4 seats in carpool
+      );
+
+      debugPrint('✅ Carpool ride created successfully for ride: $rideId');
+    } catch (e) {
+      debugPrint('❌ Failed to create carpool ride: $e');
+      rethrow;
+    }
   }
 }

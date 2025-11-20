@@ -694,7 +694,7 @@ class _WalletScreenState extends State<WalletScreen>
     );
   }
 
-    // Widget _buildAnalyticsTab() {
+  // Widget _buildAnalyticsTab() {
   //   return SingleChildScrollView(
   //     child: Column(
   //       children: [

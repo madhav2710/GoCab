@@ -109,7 +109,9 @@ class UserRating {
       userId: userId,
       averageRating: (map['averageRating'] ?? 0.0).toDouble(),
       totalRatings: map['totalRatings'] ?? 0,
-      ratingDistribution: Map<String, int>.from(map['ratingDistribution'] ?? {}),
+      ratingDistribution: Map<String, int>.from(
+        map['ratingDistribution'] ?? {},
+      ),
       commonTags: List<String>.from(map['commonTags'] ?? []),
       lastUpdated: (map['lastUpdated'] as Timestamp).toDate(),
     );

@@ -47,9 +47,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
   Widget build(BuildContext context) {
     final user = context.read<AuthProvider>().userModel;
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -57,9 +55,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
       appBar: AppBar(
         title: Text(
           'Feedback History',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-          ),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -145,9 +141,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
               ),
               labelColor: Colors.blue[600],
               unselectedLabelColor: Colors.grey[600],
-              labelStyle: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-              ),
+              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               tabs: const [
                 Tab(text: 'Received'),
                 Tab(text: 'Given'),
@@ -194,11 +188,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.star_border,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.star_border, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'No feedback received yet',
@@ -247,11 +237,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.rate_review,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.rate_review, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'No feedback given yet',
@@ -311,7 +297,9 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
                 radius: 20,
                 backgroundColor: Colors.blue[100],
                 child: Icon(
-                  feedback.fromUserRole == 'driver' ? Icons.drive_eta : Icons.person,
+                  feedback.fromUserRole == 'driver'
+                      ? Icons.drive_eta
+                      : Icons.person,
                   color: Colors.blue[600],
                   size: 20,
                 ),
@@ -322,7 +310,9 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isGiven ? 'You rated ${feedback.toUserRole}' : '${feedback.fromUserRole} rated you',
+                      isGiven
+                          ? 'You rated ${feedback.toUserRole}'
+                          : '${feedback.fromUserRole} rated you',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -351,15 +341,13 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
 
           // Tags
           if (feedback.tags.isNotEmpty) ...[
-            FeedbackTagsDisplayWidget(
-              tags: feedback.tags,
-              size: 10,
-            ),
+            FeedbackTagsDisplayWidget(tags: feedback.tags, size: 10),
             const SizedBox(height: 12),
           ],
 
           // Feedback Text
-          if (feedback.feedbackText != null && feedback.feedbackText!.isNotEmpty) ...[
+          if (feedback.feedbackText != null &&
+              feedback.feedbackText!.isNotEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -382,11 +370,7 @@ class _FeedbackHistoryScreenState extends State<FeedbackHistoryScreen>
           if (feedback.isAnonymous) ...[
             Row(
               children: [
-                Icon(
-                  Icons.visibility_off,
-                  size: 16,
-                  color: Colors.grey[600],
-                ),
+                Icon(Icons.visibility_off, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
                   'Anonymous feedback',

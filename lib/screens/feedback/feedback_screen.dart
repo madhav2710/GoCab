@@ -14,11 +14,7 @@ class FeedbackScreen extends StatefulWidget {
   final RideModel ride;
   final UserModel? otherUser; // The user being rated (driver or rider)
 
-  const FeedbackScreen({
-    super.key,
-    required this.ride,
-    this.otherUser,
-  });
+  const FeedbackScreen({super.key, required this.ride, this.otherUser});
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -27,7 +23,7 @@ class FeedbackScreen extends StatefulWidget {
 class _FeedbackScreenState extends State<FeedbackScreen> {
   final FeedbackService _feedbackService = FeedbackService();
   final TextEditingController _feedbackController = TextEditingController();
-  
+
   int _rating = 0;
   List<String> _selectedTags = [];
   bool _isAnonymous = false;
@@ -64,10 +60,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       final isCurrentUserRider = currentUser.role == UserRole.rider;
       final fromUserRole = isCurrentUserRider ? 'rider' : 'driver';
       final toUserRole = isCurrentUserRider ? 'driver' : 'rider';
-      
+
       // Get the user being rated
-      final toUserId = isCurrentUserRider 
-          ? widget.ride.driverId 
+      final toUserId = isCurrentUserRider
+          ? widget.ride.driverId
           : widget.ride.riderId;
 
       if (toUserId == null) {
@@ -81,8 +77,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         fromUserRole: fromUserRole,
         toUserRole: toUserRole,
         rating: _rating,
-        feedbackText: _feedbackController.text.trim().isEmpty 
-            ? null 
+        feedbackText: _feedbackController.text.trim().isEmpty
+            ? null
             : _feedbackController.text.trim(),
         tags: _selectedTags,
         isAnonymous: _isAnonymous,
@@ -126,9 +122,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       appBar: AppBar(
         title: Text(
           'Rate Your Ride',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-          ),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -167,7 +161,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Pickup and Dropoff
                   _buildLocationRow(
                     icon: Icons.my_location,
@@ -183,7 +177,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     color: Colors.red,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // User being rated
                   Row(
                     children: [
@@ -253,7 +247,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   RatingWidget(
                     initialRating: _rating,
                     onRatingChanged: (rating) {
@@ -353,11 +347,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.visibility_off,
-                    color: Colors.grey[600],
-                    size: 20,
-                  ),
+                  Icon(Icons.visibility_off, color: Colors.grey[600], size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -424,11 +414,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 16,
-          ),
+          child: Icon(icon, color: color, size: 16),
         ),
         const SizedBox(width: 12),
         Expanded(

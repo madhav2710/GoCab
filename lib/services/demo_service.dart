@@ -199,14 +199,14 @@ class DemoService {
     final carpoolDiscount = 0.2;
 
     double fare = baseFare + (distance * perKmRate);
-    
+
     if (rideType == RideType.carpool) {
       fare = fare * (1 - carpoolDiscount);
     }
 
     // Add some randomness
     fare += (Random().nextDouble() - 0.5) * 2.0;
-    
+
     return double.parse(fare.toStringAsFixed(2));
   }
 }

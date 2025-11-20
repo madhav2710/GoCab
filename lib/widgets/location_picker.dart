@@ -59,17 +59,20 @@ class LocationPicker extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        value ?? hint,
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: value != null
-                              ? Colors.black87
-                              : Colors.grey[400],
+                      Flexible(
+                        child: Text(
+                          value ?? hint,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: value != null
+                                ? Colors.black87
+                                : Colors.grey[400],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       if (value != null) ...[
                         const SizedBox(height: 4),
@@ -79,6 +82,8 @@ class LocationPicker extends StatelessWidget {
                             fontSize: 12,
                             color: Colors.grey[500],
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ],

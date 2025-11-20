@@ -28,7 +28,9 @@ class _FeedbackTagsWidgetState extends State<FeedbackTagsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final availableTags = widget.isForDriver ? _getDriverTags() : _getRiderTags();
+    final availableTags = widget.isForDriver
+        ? _getDriverTags()
+        : _getRiderTags();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +55,8 @@ class _FeedbackTagsWidgetState extends State<FeedbackTagsWidget> {
                   if (isSelected) {
                     _selectedTags.remove(tag);
                   } else {
-                    if (_selectedTags.length < 5) { // Limit to 5 tags
+                    if (_selectedTags.length < 5) {
+                      // Limit to 5 tags
                       _selectedTags.add(tag);
                     }
                   }
@@ -76,11 +79,7 @@ class _FeedbackTagsWidgetState extends State<FeedbackTagsWidget> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isSelected)
-                      Icon(
-                        Icons.check,
-                        size: 16,
-                        color: Colors.white,
-                      ),
+                      Icon(Icons.check, size: 16, color: Colors.white),
                     if (isSelected) const SizedBox(width: 4),
                     Text(
                       tag,
@@ -100,10 +99,7 @@ class _FeedbackTagsWidgetState extends State<FeedbackTagsWidget> {
           const SizedBox(height: 8),
           Text(
             'Maximum 5 tags selected',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.orange[600],
-            ),
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.orange[600]),
           ),
         ],
       ],
@@ -185,10 +181,7 @@ class FeedbackTagsDisplayWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.blue.withOpacity(0.1),
             borderRadius: BorderRadius.circular(size * 0.8),
-            border: Border.all(
-              color: Colors.blue.withOpacity(0.3),
-              width: 1,
-            ),
+            border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1),
           ),
           child: Text(
             tag,

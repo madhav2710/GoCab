@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../models/ride_model.dart';
 
@@ -24,7 +25,7 @@ class DriverMatchingService {
 
       // Get available drivers
       final driversSnapshot = await availableDriversQuery.get();
-      
+
       if (driversSnapshot.docs.isEmpty) {
         return null; // No available drivers
       }
@@ -58,7 +59,9 @@ class DriverMatchingService {
 
       return nearestDriver;
     } catch (e) {
-      print('Error finding nearest driver: $e');
+      if (kDebugMode) {
+        print('Error finding nearest driver: $e');
+      }
       return null;
     }
   }
@@ -82,7 +85,7 @@ class DriverMatchingService {
 
       for (final doc in pendingCarpoolRides.docs) {
         final ride = RideModel.fromMap(doc.data());
-        
+
         // Check if pickup locations are close
         final pickupDistance = _calculateDistance(
           pickupLatitude,
@@ -100,14 +103,17 @@ class DriverMatchingService {
         );
 
         // If both pickup and dropoff are within range, consider for grouping
-        if (pickupDistance <= maxDistanceKm && dropoffDistance <= maxDistanceKm) {
+        if (pickupDistance <= maxDistanceKm &&
+            dropoffDistance <= maxDistanceKm) {
           matchingGroups.add(ride);
         }
       }
 
       return matchingGroups;
     } catch (e) {
-      print('Error finding carpool groups: $e');
+      if (kDebugMode) {
+        print('Error finding carpool groups: $e');
+      }
       return [];
     }
   }
@@ -134,12 +140,11 @@ class DriverMatchingService {
         updateData['longitude'] = longitude;
       }
 
-      await _firestore
-          .collection('users')
-          .doc(driverId)
-          .update(updateData);
+      await _firestore.collection('users').doc(driverId).update(updateData);
     } catch (e) {
-      print('Error updating driver availability: $e');
+      if (kDebugMode) {
+        print('Error updating driver availability: $e');
+      }
       rethrow;
     }
   }
@@ -151,15 +156,14 @@ class DriverMatchingService {
     required double longitude,
   }) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(driverId)
-          .update({
+      await _firestore.collection('users').doc(driverId).update({
         'latitude': latitude,
         'longitude': longitude,
       });
     } catch (e) {
-      print('Error updating driver location: $e');
+      if (kDebugMode) {
+        print('Error updating driver location: $e');
+      }
       rethrow;
     }
   }
@@ -173,10 +177,10 @@ class DriverMatchingService {
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => UserModel.fromMap(doc.data()))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => UserModel.fromMap(doc.data()))
+              .toList();
+        });
   }
 
   // Calculate distance between two points using Haversine formula
@@ -191,7 +195,8 @@ class DriverMatchingService {
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLon = _degreesToRadians(lon2 - lon1);
 
-    final double a = sin(dLat / 2) * sin(dLat / 2) +
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_degreesToRadians(lat1)) *
             cos(_degreesToRadians(lat2)) *
             sin(dLon / 2) *
@@ -215,7 +220,9 @@ class DriverMatchingService {
       }
       return null;
     } catch (e) {
-      print('Error getting driver details: $e');
+      if (kDebugMode) {
+        print('Error getting driver details: $e');
+      }
       return null;
     }
   }

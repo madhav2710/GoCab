@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/carpool_ride_model.dart';
+import '../models/carpool_request_model.dart';
 import '../models/ride_model.dart';
-import 'ride_service.dart';
+import '../utils/fare_calculator.dart';
 
 class CarpoolService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final RideService _rideService = RideService();
 
   // Create a new carpool ride
   Future<CarpoolRideModel> createCarpoolRide({
@@ -18,10 +19,10 @@ class CarpoolService {
       // Calculate total fare and split among riders
       final totalFare = _calculateTotalFare(riders);
       final riderFares = _splitFareAmongRiders(riders, totalFare);
-      
+
       // Create optimized route with stops
       final stops = _createOptimizedStops(riders);
-      
+
       final carpoolRide = CarpoolRideModel(
         id: _firestore.collection('carpool_rides').doc().id,
         driverId: driverId,
@@ -103,17 +104,23 @@ class CarpoolService {
     double radiusInKm = 2.0,
   }) async {
     try {
+      // Use a simpler query to avoid index issues
       final querySnapshot = await _firestore
           .collection('carpool_rides')
           .where('status', isEqualTo: 'pending')
-          .where('availableSeats', isGreaterThan: 0)
           .get();
 
       final List<CarpoolRideModel> availableRides = [];
 
       for (final doc in querySnapshot.docs) {
         final carpoolRide = CarpoolRideModel.fromMap(doc.data());
-        
+
+        // Check if there are available seats and ride is still active
+        if (carpoolRide.availableSeats <= 0 ||
+            carpoolRide.status != CarpoolStatus.pending ||
+            carpoolRide.completedAt != null)
+          continue;
+
         // Check if pickup and dropoff are within reasonable distance
         final isPickupNearby = _isLocationNearby(
           pickupLatitude,
@@ -134,9 +141,14 @@ class CarpoolService {
         }
       }
 
+      // Sort by creation date (newest first)
+      availableRides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
       return availableRides;
     } catch (e) {
-      throw Exception('Failed to find available carpool rides: $e');
+      debugPrint('Failed to find available carpool rides: $e');
+      // Return empty list instead of throwing error
+      return [];
     }
   }
 
@@ -163,9 +175,7 @@ class CarpoolService {
     required CarpoolStatus status,
   }) async {
     try {
-      final updateData = <String, dynamic>{
-        'status': status.name,
-      };
+      final updateData = <String, dynamic>{'status': status.name};
 
       switch (status) {
         case CarpoolStatus.inProgress:
@@ -218,10 +228,7 @@ class CarpoolService {
         return rider;
       }).toList();
 
-      await _firestore
-          .collection('carpool_rides')
-          .doc(carpoolRideId)
-          .update({
+      await _firestore.collection('carpool_rides').doc(carpoolRideId).update({
         'riders': updatedRiders.map((rider) => rider.toMap()).toList(),
       });
     } catch (e) {
@@ -232,7 +239,7 @@ class CarpoolService {
   // Calculate total fare for all riders
   double _calculateTotalFare(List<CarpoolRider> riders) {
     double totalFare = 0.0;
-    
+
     for (final rider in riders) {
       // Calculate distance for this rider
       final distance = _calculateDistance(
@@ -242,8 +249,8 @@ class CarpoolService {
         rider.dropoffLongitude,
       );
 
-      // Calculate individual fare using existing ride service logic
-      final individualFare = _rideService.calculateEstimatedFare(
+      // Calculate individual fare using fare calculator
+      final individualFare = FareCalculator.calculateEstimatedFareFromRideModel(
         distance,
         RideType.carpool,
       );
@@ -260,7 +267,7 @@ class CarpoolService {
     double totalFare,
   ) {
     final Map<String, double> riderFares = {};
-    
+
     if (riders.isEmpty) return riderFares;
 
     // Calculate individual distances
@@ -274,7 +281,7 @@ class CarpoolService {
     }).toList();
 
     final totalDistance = distances.reduce((a, b) => a + b);
-    
+
     // Split fare proportionally based on distance
     for (int i = 0; i < riders.length; i++) {
       final rider = riders[i];
@@ -293,33 +300,37 @@ class CarpoolService {
 
     // Add pickup stops
     for (final rider in riders) {
-      stops.add(CarpoolStop(
-        id: 'pickup_${rider.riderId}',
-        address: rider.pickupAddress,
-        latitude: rider.pickupLatitude,
-        longitude: rider.pickupLongitude,
-        type: StopType.pickup,
-        riderIds: [rider.riderId],
-        order: order++,
-      ));
+      stops.add(
+        CarpoolStop(
+          id: 'pickup_${rider.riderId}',
+          address: rider.pickupAddress,
+          latitude: rider.pickupLatitude,
+          longitude: rider.pickupLongitude,
+          type: StopType.pickup,
+          riderIds: [rider.riderId],
+          order: order++,
+        ),
+      );
     }
 
     // Add dropoff stops
     for (final rider in riders) {
-      stops.add(CarpoolStop(
-        id: 'dropoff_${rider.riderId}',
-        address: rider.dropoffAddress,
-        latitude: rider.dropoffLatitude,
-        longitude: rider.dropoffLongitude,
-        type: StopType.dropoff,
-        riderIds: [rider.riderId],
-        order: order++,
-      ));
+      stops.add(
+        CarpoolStop(
+          id: 'dropoff_${rider.riderId}',
+          address: rider.dropoffAddress,
+          latitude: rider.dropoffLatitude,
+          longitude: rider.dropoffLongitude,
+          type: StopType.dropoff,
+          riderIds: [rider.riderId],
+          order: order++,
+        ),
+      );
     }
 
     // Sort stops by order for optimized route
     stops.sort((a, b) => a.order.compareTo(b.order));
-    
+
     return stops;
   }
 
@@ -337,7 +348,7 @@ class CarpoolService {
         stop.latitude,
         stop.longitude,
       );
-      
+
       if (distance <= radiusInKm) {
         return true;
       }
@@ -357,7 +368,8 @@ class CarpoolService {
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLon = _degreesToRadians(lon2 - lon1);
 
-    final double a = sin(dLat / 2) * sin(dLat / 2) +
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_degreesToRadians(lat1)) *
             cos(_degreesToRadians(lat2)) *
             sin(dLon / 2) *
@@ -378,32 +390,42 @@ class CarpoolService {
       final querySnapshot = await _firestore
           .collection('carpool_rides')
           .where('driverId', isEqualTo: driverId)
-          .orderBy('createdAt', descending: true)
           .get();
 
-      return querySnapshot.docs
+      final rides = querySnapshot.docs
           .map((doc) => CarpoolRideModel.fromMap(doc.data()))
           .toList();
+
+      // Sort by creation date (newest first)
+      rides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return rides;
     } catch (e) {
-      throw Exception('Failed to get driver carpool rides: $e');
+      debugPrint('Failed to get driver carpool rides: $e');
+      return []; // Return empty list instead of throwing error
     }
   }
 
   // Get carpool rides for a specific rider
   Future<List<CarpoolRideModel>> getRiderCarpoolRides(String riderId) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('carpool_rides')
-          .orderBy('createdAt', descending: true)
-          .get();
+      final querySnapshot = await _firestore.collection('carpool_rides').get();
 
-      return querySnapshot.docs
+      final rides = querySnapshot.docs
           .map((doc) => CarpoolRideModel.fromMap(doc.data()))
-          .where((carpoolRide) => 
-              carpoolRide.riders.any((rider) => rider.riderId == riderId))
+          .where(
+            (carpoolRide) =>
+                carpoolRide.riders.any((rider) => rider.riderId == riderId),
+          )
           .toList();
+
+      // Sort by creation date (newest first)
+      rides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return rides;
     } catch (e) {
-      throw Exception('Failed to get rider carpool rides: $e');
+      debugPrint('Failed to get rider carpool rides: $e');
+      return []; // Return empty list instead of throwing error
     }
   }
 
@@ -414,5 +436,109 @@ class CarpoolService {
         .doc(carpoolRideId)
         .snapshots()
         .map((doc) => CarpoolRideModel.fromMap(doc.data()!));
+  }
+
+  // Get carpool requests for a specific carpool
+  Future<List<CarpoolRequestModel>> getCarpoolRequests(
+    String carpoolRideId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('carpool_requests')
+          .where('carpoolRideId', isEqualTo: carpoolRideId)
+          .get();
+
+      final requests = <CarpoolRequestModel>[];
+      for (final doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+          data['id'] = doc.id;
+          requests.add(CarpoolRequestModel.fromMap(data));
+        } catch (e) {
+          debugPrint('Error parsing carpool request ${doc.id}: $e');
+        }
+      }
+
+      // Sort by creation time (newest first)
+      requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return requests;
+    } catch (e) {
+      debugPrint('❌ Failed to get carpool requests: $e');
+      return [];
+    }
+  }
+
+  // Get user's carpool requests
+  Future<List<CarpoolRequestModel>> getUserCarpoolRequests(
+    String userId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('carpool_requests')
+          .where('requesterId', isEqualTo: userId)
+          .get();
+
+      final requests = <CarpoolRequestModel>[];
+      for (final doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+          data['id'] = doc.id;
+          requests.add(CarpoolRequestModel.fromMap(data));
+        } catch (e) {
+          debugPrint('Error parsing user carpool request ${doc.id}: $e');
+        }
+      }
+
+      // Sort by creation time (newest first)
+      requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return requests;
+    } catch (e) {
+      debugPrint('❌ Failed to get user carpool requests: $e');
+      return [];
+    }
+  }
+
+  // Get driver's carpool requests (for all their carpools)
+  Future<List<CarpoolRequestModel>> getDriverCarpoolRequests(
+    String driverId,
+  ) async {
+    try {
+      // First get all carpool rides for this driver
+      final carpoolSnapshot = await _firestore
+          .collection('carpool_rides')
+          .where('driverId', isEqualTo: driverId)
+          .get();
+
+      if (carpoolSnapshot.docs.isEmpty) {
+        return [];
+      }
+
+      final carpoolIds = carpoolSnapshot.docs.map((doc) => doc.id).toList();
+
+      // Get all requests for these carpools
+      final querySnapshot = await _firestore
+          .collection('carpool_requests')
+          .get();
+
+      final requests = <CarpoolRequestModel>[];
+      for (final doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+          if (carpoolIds.contains(data['carpoolRideId'])) {
+            data['id'] = doc.id;
+            requests.add(CarpoolRequestModel.fromMap(data));
+          }
+        } catch (e) {
+          debugPrint('Error parsing driver carpool request ${doc.id}: $e');
+        }
+      }
+
+      // Sort by creation time (newest first)
+      requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return requests;
+    } catch (e) {
+      debugPrint('❌ Failed to get driver carpool requests: $e');
+      return [];
+    }
   }
 }

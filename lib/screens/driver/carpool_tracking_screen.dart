@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
 // import '../../services/ride_tracking_service.dart';
@@ -65,7 +66,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
         });
       }
     } catch (e) {
-      print('Error initializing carpool ride: $e');
+      if (kDebugMode) {
+        print('Error initializing carpool ride: $e');
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -100,7 +103,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
         });
       }
     } catch (e) {
-      print('Error loading riders: $e');
+      if (kDebugMode) {
+        print('Error loading riders: $e');
+      }
     }
   }
 
@@ -157,7 +162,7 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
     try {
       if (_currentCarpoolRide!.stops.isEmpty) return;
 
-      final String apiKey = 'AIzaSyCQ2xpJ042ReuzwhDtFXgwUBwjynHacdCw';
+      final String apiKey = 'AIzaSyAyp9YZ4kSXD9O94KJyLNfp99AtcnOmMbY';
       final List<LatLng> allPoints = [];
 
       // Create route through all stops
@@ -197,7 +202,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
         });
       }
     } catch (e) {
-      print('Error getting carpool route: $e');
+      if (kDebugMode) {
+        print('Error getting carpool route: $e');
+      }
     }
   }
 
@@ -257,7 +264,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
             }
           });
     } catch (e) {
-      print('Error starting location tracking: $e');
+      if (kDebugMode) {
+        print('Error starting location tracking: $e');
+      }
     }
   }
 
@@ -278,7 +287,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
             });
       }
     } catch (e) {
-      print('Error updating driver location: $e');
+      if (kDebugMode) {
+        print('Error updating driver location: $e');
+      }
     }
   }
 
@@ -334,7 +345,9 @@ class _CarpoolTrackingScreenState extends State<CarpoolTrackingScreen> {
         );
       }
     } catch (e) {
-      print('Error updating carpool status: $e');
+      if (kDebugMode) {
+        print('Error updating carpool status: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -31,18 +31,18 @@ class PaymentService {
       _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
       if (_debugMode) {
-        print('✅ Razorpay initialized successfully');
+        debugPrint('✅ Razorpay initialized successfully');
       }
     } catch (e) {
-      print('❌ Error initializing Razorpay: $e');
+      debugPrint('❌ Error initializing Razorpay: $e');
     }
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
     if (_debugMode) {
-      print('✅ Payment Success: ${response.paymentId}');
-      print('✅ Order ID: ${response.orderId}');
-      print('✅ Signature: ${response.signature}');
+      debugPrint('✅ Payment Success: ${response.paymentId}');
+      debugPrint('✅ Order ID: ${response.orderId}');
+      debugPrint('✅ Signature: ${response.signature}');
     }
 
     // Notify success callback
@@ -66,8 +66,8 @@ class PaymentService {
 
   void _handlePaymentError(PaymentFailureResponse response) {
     if (_debugMode) {
-      print('❌ Payment Error: ${response.message}');
-      print('❌ Error Code: ${response.code}');
+      debugPrint('❌ Payment Error: ${response.message}');
+      debugPrint('❌ Error Code: ${response.code}');
     }
 
     // Notify error callback
@@ -78,7 +78,7 @@ class PaymentService {
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     if (_debugMode) {
-      print('📱 External Wallet: ${response.walletName}');
+      debugPrint('📱 External Wallet: ${response.walletName}');
     }
   }
 
@@ -86,10 +86,10 @@ class PaymentService {
     try {
       _razorpay.clear();
       if (_debugMode) {
-        print('✅ Razorpay disposed successfully');
+        debugPrint('✅ Razorpay disposed successfully');
       }
     } catch (e) {
-      print('❌ Error disposing Razorpay: $e');
+      debugPrint('❌ Error disposing Razorpay: $e');
     }
   }
 
@@ -107,7 +107,7 @@ class PaymentService {
       final docRef = await _firestore.collection('wallets').add(walletData);
       return WalletModel.fromMap(walletData, docRef.id);
     } catch (e) {
-      print('Error creating wallet: $e');
+      debugPrint('Error creating wallet: $e');
       return null;
     }
   }
@@ -129,12 +129,12 @@ class PaymentService {
       // If wallet doesn't exist, create one
       return await createWallet(userId);
     } catch (e) {
-      print('Error getting wallet: $e');
+      debugPrint('Error getting wallet: $e');
       // Try to create wallet if permission denied
       try {
         return await createWallet(userId);
       } catch (e2) {
-        print('Error creating wallet: $e2');
+        debugPrint('Error creating wallet: $e2');
         return null;
       }
     }
@@ -173,7 +173,7 @@ class PaymentService {
       }
 
       if (_debugMode) {
-        print(
+        debugPrint(
           '💰 Starting wallet recharge: ₹$amount via ${paymentMethod.name}',
         );
       }
@@ -196,7 +196,7 @@ class PaymentService {
       final paymentId = paymentDoc.id;
 
       if (_debugMode) {
-        print('📝 Payment record created: $paymentId');
+        debugPrint('📝 Payment record created: $paymentId');
       }
 
       // Process payment based on method
@@ -209,7 +209,7 @@ class PaymentService {
           // For wallet, we'll handle it differently
           paymentSuccess = true;
           if (_debugMode) {
-            print('✅ Wallet payment processed successfully');
+            debugPrint('✅ Wallet payment processed successfully');
           }
           break;
 
@@ -221,7 +221,7 @@ class PaymentService {
             razorpayOrderId = order['id'];
 
             if (_debugMode) {
-              print('📋 Razorpay order created: $razorpayOrderId');
+              debugPrint('📋 Razorpay order created: $razorpayOrderId');
             }
 
             // Initialize payment
@@ -257,10 +257,10 @@ class PaymentService {
                 await _updateWalletBalance(userId, amount, paymentId);
 
                 if (_debugMode) {
-                  print('✅ Payment completed and wallet updated');
+                  debugPrint('✅ Payment completed and wallet updated');
                 }
               } catch (e) {
-                print('❌ Error updating payment status: $e');
+                debugPrint('❌ Error updating payment status: $e');
               }
             };
 
@@ -273,10 +273,10 @@ class PaymentService {
                 });
 
                 if (_debugMode) {
-                  print('❌ Payment failed: $error');
+                  debugPrint('❌ Payment failed: $error');
                 }
               } catch (e) {
-                print('❌ Error updating failed payment: $e');
+                debugPrint('❌ Error updating failed payment: $e');
               }
             };
 
@@ -289,7 +289,7 @@ class PaymentService {
             paymentSuccess = true;
             razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
           } catch (e) {
-            print('❌ Error creating Razorpay order: $e');
+            debugPrint('❌ Error creating Razorpay order: $e');
             throw Exception('Failed to create payment order: $e');
           }
           break;
@@ -325,7 +325,7 @@ class PaymentService {
         }, paymentId);
 
         if (_debugMode) {
-          print('✅ Wallet recharge completed successfully');
+          debugPrint('✅ Wallet recharge completed successfully');
         }
 
         return paymentModel;
@@ -333,7 +333,7 @@ class PaymentService {
 
       return null;
     } catch (e) {
-      print('❌ Error recharging wallet: $e');
+      debugPrint('❌ Error recharging wallet: $e');
       throw Exception('Wallet recharge failed: $e');
     }
   }
@@ -363,7 +363,9 @@ class PaymentService {
       }
 
       if (_debugMode) {
-        print('🚗 Starting ride payment: ₹$amount via ${paymentMethod.name}');
+        debugPrint(
+          '🚗 Starting ride payment: ₹$amount via ${paymentMethod.name}',
+        );
       }
 
       // Check if user has sufficient wallet balance
@@ -376,7 +378,7 @@ class PaymentService {
         }
 
         if (_debugMode) {
-          print('✅ Wallet balance sufficient: ₹${wallet.balance}');
+          debugPrint('✅ Wallet balance sufficient: ₹${wallet.balance}');
         }
       }
 
@@ -398,7 +400,7 @@ class PaymentService {
       final paymentId = paymentDoc.id;
 
       if (_debugMode) {
-        print('📝 Payment record created: $paymentId');
+        debugPrint('📝 Payment record created: $paymentId');
       }
 
       // Process payment based on method
@@ -414,10 +416,10 @@ class PaymentService {
             paymentSuccess = true;
 
             if (_debugMode) {
-              print('✅ Wallet payment processed successfully');
+              debugPrint('✅ Wallet payment processed successfully');
             }
           } catch (e) {
-            print('❌ Error processing wallet payment: $e');
+            debugPrint('❌ Error processing wallet payment: $e');
             throw Exception('Wallet payment failed: $e');
           }
           break;
@@ -430,7 +432,7 @@ class PaymentService {
             razorpayOrderId = order['id'];
 
             if (_debugMode) {
-              print('📋 Razorpay order created: $razorpayOrderId');
+              debugPrint('📋 Razorpay order created: $razorpayOrderId');
             }
 
             // Initialize payment
@@ -460,10 +462,10 @@ class PaymentService {
                 });
 
                 if (_debugMode) {
-                  print('✅ Ride payment completed successfully');
+                  debugPrint('✅ Ride payment completed successfully');
                 }
               } catch (e) {
-                print('❌ Error updating payment status: $e');
+                debugPrint('❌ Error updating payment status: $e');
               }
             };
 
@@ -476,10 +478,10 @@ class PaymentService {
                 });
 
                 if (_debugMode) {
-                  print('❌ Ride payment failed: $error');
+                  debugPrint('❌ Ride payment failed: $error');
                 }
               } catch (e) {
-                print('❌ Error updating failed payment: $e');
+                debugPrint('❌ Error updating failed payment: $e');
               }
             };
 
@@ -492,7 +494,7 @@ class PaymentService {
             paymentSuccess = true;
             razorpayPaymentId = 'demo_payment_${Random().nextInt(1000000)}';
           } catch (e) {
-            print('❌ Error creating Razorpay order: $e');
+            debugPrint('❌ Error creating Razorpay order: $e');
             throw Exception('Failed to create payment order: $e');
           }
           break;
@@ -525,7 +527,7 @@ class PaymentService {
         }, paymentId);
 
         if (_debugMode) {
-          print('✅ Ride payment completed successfully');
+          debugPrint('✅ Ride payment completed successfully');
         }
 
         return paymentModel;
@@ -533,7 +535,7 @@ class PaymentService {
 
       return null;
     } catch (e) {
-      print('❌ Error processing ride payment: $e');
+      debugPrint('❌ Error processing ride payment: $e');
       throw Exception('Ride payment failed: $e');
     }
   }
@@ -554,7 +556,7 @@ class PaymentService {
       }
 
       if (_debugMode) {
-        print('📋 Creating Razorpay order: ₹$amount - $description');
+        debugPrint('📋 Creating Razorpay order: ₹$amount - $description');
       }
 
       final url = Uri.parse('${RazorpayConfig.baseUrl}/orders');
@@ -574,15 +576,17 @@ class PaymentService {
       );
 
       if (_debugMode) {
-        print('📡 Razorpay API Response Status: ${response.statusCode}');
-        print('📡 Razorpay API Response Body: ${response.body}');
+        debugPrint('📡 Razorpay API Response Status: ${response.statusCode}');
+        debugPrint('📡 Razorpay API Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
         final orderData = jsonDecode(response.body);
 
         if (_debugMode) {
-          print('✅ Razorpay order created successfully: ${orderData['id']}');
+          debugPrint(
+            '✅ Razorpay order created successfully: ${orderData['id']}',
+          );
         }
 
         return orderData;
@@ -592,14 +596,14 @@ class PaymentService {
             errorBody['error']?['description'] ?? 'Unknown error';
 
         if (_debugMode) {
-          print('❌ Razorpay API Error: $errorMessage');
+          debugPrint('❌ Razorpay API Error: $errorMessage');
         }
 
         throw Exception('Failed to create Razorpay order: $errorMessage');
       }
     } catch (e) {
       if (_debugMode) {
-        print('❌ Error in _createRazorpayOrder: $e');
+        debugPrint('❌ Error in _createRazorpayOrder: $e');
       }
 
       if (e.toString().contains('Failed to create Razorpay order')) {
@@ -654,13 +658,17 @@ class PaymentService {
     return _firestore
         .collection('payments')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final payments = snapshot.docs
               .map((doc) => PaymentModel.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+              .toList();
+
+          // Sort by creation date (newest first) in application code
+          payments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+          return payments;
+        });
   }
 
   // Save payment method
@@ -802,7 +810,7 @@ class PaymentService {
         'completedAt': Timestamp.now(),
       }, refundDoc.id);
     } catch (e) {
-      print('Error processing refund: $e');
+      debugPrint('Error processing refund: $e');
       return null;
     }
   }

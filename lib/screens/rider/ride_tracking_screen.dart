@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_provider.dart';
 import '../../services/ride_tracking_service.dart';
@@ -79,7 +80,9 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
         });
       }
     } catch (e) {
-      print('Error initializing tracking: $e');
+      if (kDebugMode) {
+        print('Error initializing tracking: $e');
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -361,7 +364,7 @@ class _RideTrackingScreenState extends State<RideTrackingScreen> {
                           Expanded(
                             child: _buildInfoCard(
                               'Fare',
-                              '\$${widget.ride.estimatedFare.toStringAsFixed(2)}',
+                              '₹${widget.ride.estimatedFare.toStringAsFixed(2)}',
                               Icons.attach_money,
                               Colors.green,
                             ),

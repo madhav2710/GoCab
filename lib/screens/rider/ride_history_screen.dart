@@ -48,7 +48,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
         }
       }
     } catch (e) {
-      print('Error loading ride history: $e');
+      debugPrint('Error loading ride history: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -196,7 +196,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                 Expanded(
                                   child: _buildStatCard(
                                     'Total Spent',
-                                    '\$${(_statistics['totalSpent'] ?? 0.0).toStringAsFixed(2)}',
+                                    '₹${(_statistics['totalSpent'] ?? 0.0).toStringAsFixed(2)}',
                                     Icons.attach_money,
                                     Colors.white,
                                   ),
@@ -205,7 +205,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                 Expanded(
                                   child: _buildStatCard(
                                     'Avg. Fare',
-                                    '\$${(_statistics['averageFare'] ?? 0.0).toStringAsFixed(2)}',
+                                    '₹${(_statistics['averageFare'] ?? 0.0).toStringAsFixed(2)}',
                                     Icons.trending_up,
                                     Colors.white,
                                   ),
@@ -313,7 +313,9 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                       width: 40,
                                       height: 40,
                                       decoration: BoxDecoration(
-                                        color: _getStatusColor(ride.status).withOpacity(0.1),
+                                        color: _getStatusColor(
+                                          ride.status,
+                                        ).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -325,7 +327,8 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             '${ride.pickupAddress} → ${ride.dropoffAddress}',
@@ -353,7 +356,9 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: _getStatusColor(ride.status).withOpacity(0.1),
+                                        color: _getStatusColor(
+                                          ride.status,
+                                        ).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
@@ -368,27 +373,28 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                                                 Row(
-                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                   children: [
-                                     Text(
-                                       'Fare: \$${(ride.actualFare ?? ride.estimatedFare).toStringAsFixed(2)}',
-                                       style: GoogleFonts.poppins(
-                                         fontSize: 14,
-                                         fontWeight: FontWeight.w600,
-                                         color: Colors.green[600],
-                                       ),
-                                     ),
-                                     if (ride.driverId != null)
-                                       Text(
-                                         'Driver Assigned',
-                                         style: GoogleFonts.poppins(
-                                           fontSize: 12,
-                                           color: Colors.grey[600],
-                                         ),
-                                       ),
-                                   ],
-                                 ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Fare: ₹${(ride.actualFare ?? ride.estimatedFare).toStringAsFixed(2)}',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green[600],
+                                      ),
+                                    ),
+                                    if (ride.driverId != null)
+                                      Text(
+                                        'Driver Assigned',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
                           );
@@ -402,7 +408,12 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

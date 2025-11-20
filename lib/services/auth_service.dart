@@ -92,10 +92,9 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    if (_auth == null) {
-      throw Exception('Firebase Auth not available');
-    }
+    debugPrint('🔥 AuthService: Starting Firebase signOut...');
     await _auth!.signOut();
+    debugPrint('🔥 AuthService: Firebase signOut completed');
   }
 
   // Get user data from Firestore

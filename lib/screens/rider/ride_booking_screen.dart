@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../services/location_service.dart';
 import '../../services/auth_provider.dart';
-import '../../services/ride_service.dart';
+import '../../utils/fare_calculator.dart';
+import '../../models/ride_request_model.dart' as ride_request;
 import '../../models/ride_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/location_picker.dart';
 import '../../widgets/ride_type_selector.dart';
 import '../../widgets/location_search_dialog.dart';
-import '../../widgets/carpool_toggle.dart';
 import '../../services/carpool_service.dart';
 import '../../models/carpool_ride_model.dart';
 import 'ride_confirmation_screen.dart';
@@ -24,7 +24,6 @@ class RideBookingScreen extends StatefulWidget {
 
 class _RideBookingScreenState extends State<RideBookingScreen> {
   final LocationService _locationService = LocationService();
-  final RideService _rideService = RideService();
   final CarpoolService _carpoolService = CarpoolService();
 
   String? _pickupAddress;
@@ -90,7 +89,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
         }
       }
     } catch (e) {
-      print('Error loading current location: $e');
+      debugPrint('Error loading current location: $e');
 
       // Use default location as fallback
       final locationService = LocationService();
@@ -239,9 +238,9 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
           _dropoffLongitude!,
         );
 
-        final fare = _rideService.calculateEstimatedFare(
+        final fare = FareCalculator.calculateEstimatedFare(
           distance,
-          _selectedRideType,
+          _selectedRideType.name,
         );
         setState(() => _estimatedFare = fare);
       } catch (e) {
@@ -274,8 +273,12 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
   void _onRideTypeChanged(RideType type) {
     setState(() {
       _selectedRideType = type;
+      _isCarpoolEnabled = (type == RideType.carpool);
     });
     _calculateFare();
+    if (type == RideType.carpool) {
+      _findAvailableCarpoolRides();
+    }
   }
 
   // void _onCarpoolToggled(bool value) {
@@ -310,7 +313,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
         _availableCarpoolRides = availableRides;
       });
     } catch (e) {
-      print('Error finding available carpool rides: $e');
+      debugPrint('Error finding available carpool rides: $e');
     }
   }
 
@@ -331,6 +334,17 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
       return;
     }
 
+    // Convert RideType from ride_model to ride_request_model
+    ride_request.RideType requestRideType;
+    switch (_selectedRideType) {
+      case RideType.solo:
+        requestRideType = ride_request.RideType.standard;
+        break;
+      case RideType.carpool:
+        requestRideType = ride_request.RideType.carpool;
+        break;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -341,7 +355,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
           pickupLongitude: _pickupLongitude!,
           dropoffLatitude: _dropoffLatitude!,
           dropoffLongitude: _dropoffLongitude!,
-          rideType: _selectedRideType,
+          rideType: requestRideType,
           estimatedFare: _estimatedFare!,
         ),
       ),
@@ -392,29 +406,6 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                     value: _dropoffAddress,
                     onTap: _selectDropoffLocation,
                     icon: Icons.location_on,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Carpool Toggle
-                  CarpoolToggle(
-                    isEnabled: _isCarpoolEnabled,
-                    onChanged: (enabled) {
-                      setState(() {
-                        _isCarpoolEnabled = enabled;
-                        if (enabled) {
-                          _selectedRideType = RideType.carpool;
-                        } else {
-                          _selectedRideType = RideType.solo;
-                        }
-                      });
-                      _calculateFare();
-                      if (enabled) {
-                        _findAvailableCarpoolRides();
-                      }
-                    },
-                    availableSeats: 3,
-                    discountPercentage: 20.0,
                   ),
 
                   const SizedBox(height: 24),
@@ -475,16 +466,19 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                           ),
                           const SizedBox(height: 8),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '\$${_estimatedFare!.toStringAsFixed(2)}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).primaryColor,
+                              Expanded(
+                                child: Text(
+                                  '₹${_estimatedFare!.toStringAsFixed(2)}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -565,12 +559,15 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                '${carpoolRide.riders.length} passengers',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+              Expanded(
+                child: Text(
+                  '${carpoolRide.riders.length} passengers',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const Spacer(),
@@ -587,23 +584,26 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
                     fontWeight: FontWeight.w500,
                     color: Colors.green,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Total Fare: \$${carpoolRide.totalFare.toStringAsFixed(2)}',
+            'Total Fare: ₹${carpoolRide.totalFare.toStringAsFixed(2)}',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.green,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
           Text(
             '${carpoolRide.stops.length} stops',
             style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
           SizedBox(

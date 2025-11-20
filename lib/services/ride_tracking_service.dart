@@ -14,69 +14,39 @@ class RideTrackingService {
   // Get current ride for a user
   Future<RideModel?> getCurrentRide(String userId) async {
     try {
-      // Try the complex query first
+      // Use simple query to avoid index issues
       final querySnapshot = await _firestore
           .collection('rides')
           .where('riderId', isEqualTo: userId)
-          .where(
-            'status',
-            whereIn: [
-              'pending',
-              'accepted',
-              'inProgress',
-              'arrived',
-              'pickupComplete',
-            ],
-          )
-          .orderBy('createdAt', descending: true)
-          .limit(1)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final data = querySnapshot.docs.first.data();
-        data['id'] = querySnapshot.docs.first.id;
+      final rides = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
         return RideModel.fromMap(data);
+      }).toList();
+
+      // Filter active rides in application code
+      final activeRides = rides
+          .where(
+            (ride) =>
+                ride.status == RideStatus.pending ||
+                ride.status == RideStatus.accepted ||
+                ride.status == RideStatus.inProgress ||
+                ride.status == RideStatus.arrived ||
+                ride.status == RideStatus.pickupComplete,
+          )
+          .toList();
+
+      if (activeRides.isNotEmpty) {
+        // Sort by creation date (newest first) and return the most recent
+        activeRides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return activeRides.first;
       }
       return null;
     } catch (e) {
-      debugPrint('Complex query failed, trying fallback: $e');
-      // Fallback: simple query without orderBy
-      try {
-        final querySnapshot = await _firestore
-            .collection('rides')
-            .where('riderId', isEqualTo: userId)
-            .where(
-              'status',
-              whereIn: [
-                'pending',
-                'accepted',
-                'inProgress',
-                'arrived',
-                'pickupComplete',
-              ],
-            )
-            .limit(10)
-            .get();
-
-        if (querySnapshot.docs.isNotEmpty) {
-          // Sort manually and get the most recent
-          final sortedDocs = querySnapshot.docs.toList()
-            ..sort((a, b) {
-              final aTime = a.data()['createdAt'] as Timestamp?;
-              final bTime = b.data()['createdAt'] as Timestamp?;
-              if (aTime == null || bTime == null) return 0;
-              return bTime.compareTo(aTime);
-            });
-
-          final data = sortedDocs.first.data();
-          data['id'] = sortedDocs.first.id;
-          return RideModel.fromMap(data);
-        }
-        return null;
-      } catch (fallbackError) {
-        debugPrint('Fallback query also failed: $fallbackError');
-        return null;
-      }
+      debugPrint('Error getting current ride: $e');
+      return null;
     }
   }
 
@@ -86,24 +56,30 @@ class RideTrackingService {
       return _firestore
           .collection('rides')
           .where('riderId', isEqualTo: userId)
-          .where(
-            'status',
-            whereIn: [
-              'pending',
-              'accepted',
-              'inProgress',
-              'arrived',
-              'pickupComplete',
-            ],
-          )
-          .orderBy('createdAt', descending: true)
-          .limit(1)
           .snapshots()
           .map((snapshot) {
-            if (snapshot.docs.isNotEmpty) {
-              final data = snapshot.docs.first.data();
-              data['id'] = snapshot.docs.first.id;
+            final rides = snapshot.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
               return RideModel.fromMap(data);
+            }).toList();
+
+            // Filter active rides in application code
+            final activeRides = rides
+                .where(
+                  (ride) =>
+                      ride.status == RideStatus.pending ||
+                      ride.status == RideStatus.accepted ||
+                      ride.status == RideStatus.inProgress ||
+                      ride.status == RideStatus.arrived ||
+                      ride.status == RideStatus.pickupComplete,
+                )
+                .toList();
+
+            if (activeRides.isNotEmpty) {
+              // Sort by creation date (newest first) and return the most recent
+              activeRides.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              return activeRides.first;
             }
             return null;
           })
@@ -113,6 +89,31 @@ class RideTrackingService {
           });
     } catch (e) {
       debugPrint('Error creating stream: $e');
+      return Stream.value(null);
+    }
+  }
+
+  // Stream ride updates for a specific ride
+  Stream<RideModel?> streamRideUpdates(String rideId) {
+    try {
+      return _firestore
+          .collection('rides')
+          .doc(rideId)
+          .snapshots()
+          .map((snapshot) {
+            if (snapshot.exists) {
+              final data = snapshot.data()!;
+              data['id'] = snapshot.id;
+              return RideModel.fromMap(data);
+            }
+            return null;
+          })
+          .handleError((error) {
+            debugPrint('Stream ride updates failed: $error');
+            return null;
+          });
+    } catch (e) {
+      debugPrint('Error creating ride updates stream: $e');
       return Stream.value(null);
     }
   }

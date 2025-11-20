@@ -630,7 +630,9 @@ class NotificationService {
 
 // Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Handling background message: ${message.data}');
+  if (kDebugMode) {
+    print('Handling background message: ${message.data}');
+  }
 
   // Initialize Firebase if needed
   // await Firebase.initializeApp();

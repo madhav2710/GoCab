@@ -14,6 +14,7 @@ class UserModel {
   final double? latitude;
   final double? longitude;
   final String? fcmToken;
+  final String? vehicleNumber;
 
   UserModel({
     required this.uid,
@@ -27,6 +28,7 @@ class UserModel {
     this.latitude,
     this.longitude,
     this.fcmToken,
+    this.vehicleNumber,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -36,14 +38,15 @@ class UserModel {
       name: map['name'] ?? '',
       phone: map['phone'] ?? '',
       role: map['role'] == 'driver' ? UserRole.driver : UserRole.rider,
-      createdAt: map['createdAt'] != null 
-          ? (map['createdAt'] as Timestamp).toDate() 
+      createdAt: map['createdAt'] != null
+          ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
       isActive: map['isActive'] ?? true,
       isAvailable: map['isAvailable'] ?? false,
       latitude: map['latitude']?.toDouble(),
       longitude: map['longitude']?.toDouble(),
       fcmToken: map['fcmToken'],
+      vehicleNumber: map['vehicleNumber'],
     );
   }
 
@@ -60,6 +63,7 @@ class UserModel {
       'latitude': latitude,
       'longitude': longitude,
       'fcmToken': fcmToken,
+      'vehicleNumber': vehicleNumber,
     };
   }
 
@@ -75,6 +79,7 @@ class UserModel {
     double? latitude,
     double? longitude,
     String? fcmToken,
+    String? vehicleNumber,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -88,6 +93,7 @@ class UserModel {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       fcmToken: fcmToken ?? this.fcmToken,
+      vehicleNumber: vehicleNumber ?? this.vehicleNumber,
     );
   }
 }

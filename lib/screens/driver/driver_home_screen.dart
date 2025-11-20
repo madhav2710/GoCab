@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_provider.dart';
+import '../../providers/ride_request_provider.dart';
 import '../../services/ride_service.dart';
 import '../../services/driver_matching_service.dart';
 import '../../models/ride_model.dart';
-import 'driver_ride_screen.dart';
+import 'driver_ride_screen_simple.dart';
+import 'carpool_requests_screen.dart';
+import 'create_carpool_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DriverHomeScreen extends StatefulWidget {
@@ -21,7 +25,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   final DriverMatchingService _driverMatchingService = DriverMatchingService();
   List<RideModel> _pendingRides = [];
   bool _isLoading = false;
-  
+
   // Driver statistics
   int _todayRides = 0;
   double _todayEarnings = 0.0;
@@ -44,7 +48,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         });
       });
     } catch (e) {
-      print('Error loading pending rides: $e');
+      debugPrint('Error loading pending rides: $e');
     }
   }
 
@@ -54,12 +58,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       final user = authProvider.userModel;
 
       if (user != null) {
-        // Load today's stats
+        // Load today's stats from ride_requests collection
         final today = DateTime.now();
         final startOfDay = DateTime(today.year, today.month, today.day);
-        
+
+        // Get today's completed ride requests
         final todayRidesQuery = await FirebaseFirestore.instance
-            .collection('rides')
+            .collection('ride_requests')
             .where('driverId', isEqualTo: user.uid)
             .where('status', isEqualTo: 'completed')
             .where('updatedAt', isGreaterThanOrEqualTo: startOfDay)
@@ -71,9 +76,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           todayEarnings += (data['estimatedFare'] as num?)?.toDouble() ?? 0.0;
         }
 
-        // Load total stats
+        // Get total completed ride requests
         final totalRidesQuery = await FirebaseFirestore.instance
-            .collection('rides')
+            .collection('ride_requests')
             .where('driverId', isEqualTo: user.uid)
             .where('status', isEqualTo: 'completed')
             .get();
@@ -94,7 +99,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         }
       }
     } catch (e) {
-      print('Error loading driver stats: $e');
+      debugPrint('Error loading driver stats: $e');
     }
   }
 
@@ -115,7 +120,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         );
       }
     } catch (e) {
-      print('Error updating driver availability: $e');
+      debugPrint('Error updating driver availability: $e');
       // Revert the toggle if there's an error
       setState(() {
         _isOnline = !value;
@@ -129,7 +134,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   Future<void> _acceptRide(RideModel ride) async {
     if (_isLoading) return; // Prevent multiple clicks
-    
+
     try {
       setState(() {
         _isLoading = true;
@@ -149,7 +154,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
       // Assign driver to ride
       await _rideService.assignDriverToRide(ride.id, user.uid);
-      
+
       // Update driver availability to false
       await _driverMatchingService.updateDriverAvailability(
         driverId: user.uid,
@@ -168,15 +173,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         );
 
         // Navigate to ride management screen
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DriverRideScreen(ride: ride),
+            builder: (context) => DriverRideScreenSimple(ride: ride),
           ),
         );
       }
     } catch (e) {
-      print('Error accepting ride: $e');
+      if (kDebugMode) {
+        print('Error accepting ride: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -210,6 +217,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.people, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CarpoolRequestsScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: () {
               _loadPendingRides();
@@ -220,9 +238,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             icon: const Icon(Icons.notifications, color: Colors.white),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notifications coming soon!'),
-                ),
+                const SnackBar(content: Text('Notifications coming soon!')),
               );
             },
           ),
@@ -230,9 +246,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             icon: const Icon(Icons.person, color: Colors.white),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Profile settings coming soon!'),
-                ),
+                const SnackBar(content: Text('Profile settings coming soon!')),
               );
             },
           ),
@@ -297,7 +311,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             ),
                             Switch(
                               value: _isOnline,
-                              onChanged: _isLoading ? null : _toggleOnlineStatus,
+                              onChanged: _isLoading
+                                  ? null
+                                  : _toggleOnlineStatus,
                               activeColor: Colors.white,
                               activeTrackColor: Colors.white.withOpacity(0.3),
                               inactiveThumbColor: Colors.white,
@@ -336,7 +352,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       Expanded(
                         child: _buildStatCard(
                           'Today\'s Earnings',
-                          '\$${_todayEarnings.toStringAsFixed(2)}',
+                          '₹${_todayEarnings.toStringAsFixed(2)}',
                           Icons.attach_money,
                           Colors.green,
                         ),
@@ -360,7 +376,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       Expanded(
                         child: _buildStatCard(
                           'Total Earnings',
-                          '\$${_totalEarnings.toStringAsFixed(2)}',
+                          '₹${_totalEarnings.toStringAsFixed(2)}',
                           Icons.account_balance_wallet,
                           Colors.orange,
                         ),
@@ -426,7 +442,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         ),
                       )
                     else
-                      ..._pendingRides.map((ride) => _buildRideRequestCard(ride)),
+                      ..._pendingRides.map(
+                        (ride) => _buildRideRequestCard(ride),
+                      ),
 
                     const SizedBox(height: 24),
                   ],
@@ -436,7 +454,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () async {
+                        // Force cleanup of ride request provider data before signing out
+                        final rideProvider = Provider.of<RideRequestProvider>(
+                          context,
+                          listen: false,
+                        );
+                        debugPrint('🛑 Starting sign-out process...');
+                        rideProvider.forceCleanup();
                         await authProvider.signOut();
+                        debugPrint('✅ Sign-out process completed');
                       },
                       icon: const Icon(Icons.logout),
                       label: Text(
@@ -458,6 +484,25 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             ),
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CreateCarpoolScreen(),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF1E3A8A),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'Create Carpool',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -548,7 +593,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               ),
               const Spacer(),
               Text(
-                '\$${ride.estimatedFare.toStringAsFixed(2)}',
+                '₹${ride.estimatedFare.toStringAsFixed(2)}',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

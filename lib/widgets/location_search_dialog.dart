@@ -122,6 +122,8 @@ class _LocationSearchDialogState extends State<LocationSearchDialog> {
                         fontSize: 16,
                         color: Colors.black87,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     onTap: () {
                       Navigator.pop(context, suggestion);
