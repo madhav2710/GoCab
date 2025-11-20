@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_provider.dart';
-import '../../services/ride_service.dart';
+// import '../../services/ride_service.dart';
 import '../../services/payment_service.dart';
 import '../../models/ride_request_model.dart' as ride_request;
 import '../../models/payment_model.dart';

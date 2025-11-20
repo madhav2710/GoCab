@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../../services/auth_provider.dart';
+// import 'package:provider/provider.dart';
+// import '../../services/auth_provider.dart';
 import '../../services/ride_tracking_service.dart';
 import '../../services/navigation_service.dart';
 import '../../models/ride_model.dart';
 import '../../models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
-import '../../utils/color_utils.dart';
+// import '../../utils/color_utils.dart';
 
 class DriverRideScreenSimple extends StatefulWidget {
   final RideModel ride;
